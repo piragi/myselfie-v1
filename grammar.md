@@ -10,7 +10,7 @@ C\* is a tiny subset of the programming language C. C\* features global variable
 
 C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
 
-C\* Symbols: `integer_literal`, `character_literal`, `string_literal`, `identifier`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`
+C\* Symbols: `integer_literal`, `character_literal`, `string_literal`, `identifier`, `hex_literal`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`
 
 with:
 
@@ -22,6 +22,8 @@ character_literal = "'" printable_character "'" .
 string_literal    = """ { printable_character } """ .
 
 identifier        = letter { letter | digit | "_" } .
+
+hex_literal       = "0x" hex_letter { hex_letter } .
 ```
 
 and:
@@ -30,6 +32,8 @@ and:
 digit  = "0" | ... | "9" .
 
 letter = "a" | ... | "z" | "A" | ... | "Z" .
+
+hex_letter = "a" | ... | "f" | "A" | ... | "F" | digit .
 ```
 
 C\* Grammar:
@@ -74,3 +78,4 @@ if                = "if" "(" expression ")"
 
 return            = "return" [ expression ] .
 ```
+
