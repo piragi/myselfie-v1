@@ -57,10 +57,8 @@ statement         = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expressi
 
 call              = identifier "(" [ expression { "," expression } ] ")" .
 
-expression        = bitwise_expression
-                    [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) bitwise_expression ] .
-
-bitwise_expression = simple_expression { ( "<<" || ">>") simple_expression } .
+expression        = simple_expression
+                    [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) simple_expression ] .
 
 simple_expression = term { ( "+" | "-" ) term } .
 
