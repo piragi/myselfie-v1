@@ -418,6 +418,9 @@ uint64_t SYM_LT           = 24; // <
 uint64_t SYM_LEQ          = 25; // <=
 uint64_t SYM_GT           = 26; // >
 uint64_t SYM_GEQ          = 27; // >=
+uint64_t SYM_LSHIFT       = 32; // <<
+uint64_t SYM_RSHIFT       = 33; // >>
+
 
 // symbols for bootstrapping
 
@@ -626,6 +629,8 @@ uint64_t is_int_or_char_literal();
 uint64_t is_mult_or_div_or_rem();
 uint64_t is_plus_or_minus();
 uint64_t is_comparison();
+uint64_t is_shift();
+
 
 uint64_t look_for_factor();
 uint64_t look_for_statement();
@@ -3787,7 +3792,11 @@ void get_symbol() {
       } else if (character == CHAR_LT) {
         get_character();
 
-        if (character == CHAR_EQUAL) {
+        if (character == CHAR_LT) {
+          get_character();
+
+          symbol = SYM_LSHIFT;
+        }if (character == CHAR_EQUAL) {
           get_character();
 
           symbol = SYM_LEQ;
@@ -3797,7 +3806,11 @@ void get_symbol() {
       } else if (character == CHAR_GT) {
         get_character();
 
-        if (character == CHAR_EQUAL) {
+        if (character == CHAR_GT) {
+          get_character();
+
+          symbol = SYM_RSHIFT;
+        }if (character == CHAR_EQUAL) {
           get_character();
 
           symbol = SYM_GEQ;
@@ -4072,6 +4085,15 @@ uint64_t is_comparison() {
   else if (symbol == SYM_LEQ)
     return 1;
   else if (symbol == SYM_GEQ)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_shift() {
+  if (symbol == SYM_LSHIFT)
+    return 1;
+  else if (symbol == SYM_RSHIFT)
     return 1;
   else
     return 0;

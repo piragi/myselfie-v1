@@ -60,6 +60,8 @@ call              = identifier "(" [ expression { "," expression } ] ")" .
 expression        = simple_expression
                     [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) simple_expression ] .
 
+shift_expression  = simple_expression { ("<<" | ">>") simple_expression } .
+
 simple_expression = term { ( "+" | "-" ) term } .
 
 term              = factor { ( "*" | "/" | "%" ) factor } .
