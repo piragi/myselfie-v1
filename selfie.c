@@ -138,7 +138,6 @@ void     string_reverse(char* s);
 uint64_t string_compare(char* s, char* t);
 
 uint64_t atoi(char* s);
-uint64_t atohex(char* s);
 char*    itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a);
 
 uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f);
@@ -374,8 +373,6 @@ uint64_t is_character_letter();
 uint64_t is_character_digit();
 uint64_t is_character_letter_or_digit_or_underscore();
 uint64_t is_character_not_double_quote_or_new_line_or_eof();
-uint64_t is_character_hex_letter_digit();
-
 
 uint64_t identifier_string_match(uint64_t string_index);
 uint64_t identifier_or_keyword();
@@ -418,6 +415,8 @@ uint64_t SYM_LT           = 24; // <
 uint64_t SYM_LEQ          = 25; // <=
 uint64_t SYM_GT           = 26; // >
 uint64_t SYM_GEQ          = 27; // >=
+uint64_t SYM_LSHIFT       = 32; // <<
+uint64_t SYM_RSHIFT       = 33; // >>
 
 // symbols for bootstrapping
 
@@ -425,7 +424,6 @@ uint64_t SYM_INT      = 28; // int
 uint64_t SYM_CHAR     = 29; // char
 uint64_t SYM_UNSIGNED = 30; // unsigned
 uint64_t SYM_ELLIPSIS = 31; // ...
-
 
 uint64_t* SYMBOLS; // strings representing symbols
 
@@ -2675,75 +2673,6 @@ uint64_t atoi(char* s) {
   return n;
 }
 
-uint64_t atohex(char* s) {
-  uint64_t i;
-  uint64_t n;
-  uint64_t c;
-
-  // the conversion of the ASCII string in s to its
-  // numerical value n begins with the leftmost digit in s
-  i = 0;
-
-  // and the numerical value 0 for n
-  n = 0;
-
-  // load character (one byte) at index i in s from memory requires
-  // bit shifting since memory access can only be done at word granularity
-  c = load_character(s, i);
-
-  // loop until s is terminated
-  while (c != 0) {
-    // the numerical value of ASCII-encoded decimal digits
-    // is offset by the ASCII code of '0' (which is 48)
-    if(c <= '9')
-    c = c - '0';
-
-    // is offset by 55 (so that 'A' represents 10; 'F' represents 16)
-    else if(c <= 'F')
-    c = c - 55;
-
-    // is offset by 87 (so that 'a' represents 10; 'f' represents 16)
-    else if(c <= 'f')
-    c = c - 87;
-
-    else{
-      printf2("%s: cannot convert non-hexadecimal number %s\n", selfie_name, s);
-
-      exit(EXITCODE_SCANNERERROR);
-    }
-
-    // assert: s contains a hexadecimal number
-
-    // use base 16 but detect wrap around
-    if (n < UINT64_MAX / 16)
-      n = n * 16 + c;
-    else if (n == UINT64_MAX / 16)
-      if (c <= UINT64_MAX % 16)
-        n = n * 16 + c;
-      else {
-        // s contains a hexadecimal number larger than UINT64_MAX
-        printf2("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
-
-        exit(EXITCODE_SCANNERERROR);
-      }
-    else {
-      // s contains a hexadecimal number larger than UINT64_MAX
-      printf2("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
-
-      exit(EXITCODE_SCANNERERROR);
-    }
-
-    // go to the next digit
-    i = i + 1;
-
-    // load character (one byte) at index i in s from memory requires
-    // bit shifting since memory access can only be done at word granularity
-    c = load_character(s, i);
-  }
-
-  return n;
-}
-
 char* itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a) {
   // assert: b in {2,4,8,10,16}
 
@@ -3474,24 +3403,6 @@ uint64_t is_character_digit() {
     return 0;
 }
 
-
-uint64_t is_character_hex_letter_digit() {
-  if (is_character_digit())
-    return 1;
-  else if (character >= 'a')
-    if (character <= 'f')
-      return 1;
-    else
-      return 0;
-  else if (character >= 'A')
-    if (character <= 'F')
-      return 1;
-    else
-      return 0;
-  else
-    return 0;
-}
-
 uint64_t is_character_letter_or_digit_or_underscore() {
   if (is_character_letter())
     return 1;
@@ -3587,38 +3498,6 @@ void get_symbol() {
 
         i = 0;
 
-        if(character == '0'){
-          get_character();
-          if(character == 'x'){
-            get_character();
-
-            if(is_character_hex_letter_digit() == 0)
-              syntax_error_message("invalid input");
-
-
-            while (is_character_hex_letter_digit()) {
-              if (i >= MAX_INTEGER_LENGTH) {
-                if (integer_is_signed)
-                  syntax_error_message("signed integer out of bound");
-                else
-                  syntax_error_message("integer out of bound");
-
-              exit(EXITCODE_SCANNERERROR);
-          }
-
-          store_character(integer, i, character);
-
-          i = i + 1;
-
-          get_character();
-        }
-            store_character(integer, i, 0); // null-terminated string
-
-            literal = atohex(integer);
-        }
-        }
-
-        else if (is_character_digit()){
         while (is_character_digit()) {
           if (i >= MAX_INTEGER_LENGTH) {
             if (integer_is_signed)
@@ -3639,16 +3518,15 @@ void get_symbol() {
         store_character(integer, i, 0); // null-terminated string
 
         literal = atoi(integer);
-        }
 
-            if (integer_is_signed)
-              if (literal > INT64_MIN) {
-                  syntax_error_message("signed integer out of bound");
+        if (integer_is_signed)
+          if (literal > INT64_MIN) {
+              syntax_error_message("signed integer out of bound");
 
-                  exit(EXITCODE_SCANNERERROR);
-                }
+              exit(EXITCODE_SCANNERERROR);
+            }
 
-            symbol = SYM_INTEGER;
+        symbol = SYM_INTEGER;
 
       } else if (character == CHAR_SINGLEQUOTE) {
         get_character();
@@ -3787,6 +3665,12 @@ void get_symbol() {
       } else if (character == CHAR_LT) {
         get_character();
 
+        if (character == CHAR_LT){
+          get_character();
+
+          symbol = SYM_LSHIFT;
+        }
+
         if (character == CHAR_EQUAL) {
           get_character();
 
@@ -3796,6 +3680,12 @@ void get_symbol() {
 
       } else if (character == CHAR_GT) {
         get_character();
+
+        if (character == CHAR_GT){
+          get_character();
+
+          symbol = SYM_RSHIFT;
+        }
 
         if (character == CHAR_EQUAL) {
           get_character();
@@ -4072,6 +3962,15 @@ uint64_t is_comparison() {
   else if (symbol == SYM_LEQ)
     return 1;
   else if (symbol == SYM_GEQ)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_shift() {
+  if (symbol == SYM_LSHIFT)
+    return 1;
+  else if (symbol == SYM_RSHIFT)
     return 1;
   else
     return 0;
@@ -11274,6 +11173,7 @@ uint64_t selfie(uint64_t extras) {
   if (number_of_remaining_arguments() == 0)
     return EXITCODE_NOARGUMENTS;
   else {
+    printf1("%s This is Julius Sula’s Selfie\n", selfie_name);
     printf2("%s: this is the selfie system from %s with\n", selfie_name, SELFIE_URL);
     printf3("%s: %u-bit unsigned integers and %u-bit pointers hosted on ", selfie_name,
       (char*) SIZEOFUINT64INBITS,
