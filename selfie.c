@@ -1123,6 +1123,8 @@ void reset_instruction_counters() {
   ic_jal   = 0;
   ic_jalr  = 0;
   ic_ecall = 0;
+  ic_sll = 0;
+  ic_srl = 0;
 }
 
 // -----------------------------------------------------------------
@@ -1964,6 +1966,8 @@ void reset_interpreter() {
 void reset_nop_counters() {
   nopc_lui   = 0;
   nopc_addi  = 0;
+  nopc_sll  = 0;
+  nopc_srl  = 0;
   nopc_add   = 0;
   nopc_sub   = 0;
   nopc_mul   = 0;
@@ -1975,6 +1979,8 @@ void reset_nop_counters() {
   nopc_beq   = 0;
   nopc_jal   = 0;
   nopc_jalr  = 0;
+  nopc_sll   = 0;
+  nopc_srl   = 0;
 }
 
 void reset_source_profile() {
@@ -3662,6 +3668,27 @@ void get_symbol() {
 
             literal = atohex(integer);
         }
+        while (is_character_digit()) {
+          if (i >= MAX_INTEGER_LENGTH) {
+            if (integer_is_signed)
+              syntax_error_message("signed integer out of bound");
+            else
+              syntax_error_message("integer out of bound");
+
+            exit(EXITCODE_SCANNERERROR);
+          }
+
+          store_character(integer, i, character);
+
+          i = i + 1;
+
+          get_character();
+        }
+
+        store_character(integer, i, 0); // null-terminated string
+
+        literal = atoi(integer);
+
         }
 
         else if (is_character_digit()){
@@ -4826,9 +4853,7 @@ uint64_t compile_simple_expression() {
   ltype = compile_term();
 
   // assert: allocated_temporaries == n + 1
-  print("\nterm symbol = ");
-  print_integer(symbol);
-  print("\n");
+ 
   // + or - ?
   while (is_plus_or_minus()) {
     operator_symbol = symbol;
@@ -4897,20 +4922,9 @@ uint64_t compile_shift_expression() {
   uint64_t operator_symbol;
   uint64_t rtype;
 
- 
-
-  // assert: n = allocated_temporaries
-
   ltype = compile_simple_expression();
-  print("test nach compile");
-  // assert: allocated_temporaries == n + 1
-  print("\nsymbol = ");
-  print_integer(symbol);
-  print("\n");
-  // + or - ?
+
   while (is_shift()) {
-    
-    
     operator_symbol = symbol;
 
     get_symbol();
@@ -6424,7 +6438,7 @@ uint64_t get_total_number_of_instructions() {
 }
 
 uint64_t get_total_number_of_nops() {
-  return nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_load + nopc_store + nopc_beq + nopc_jal + nopc_jalr;
+  return nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_load + nopc_store + nopc_beq + nopc_jal + nopc_jalr + nopc_sll + nopc_srl;
 }
 
 void print_instruction_counter(uint64_t counter, uint64_t ins) {
@@ -6456,6 +6470,10 @@ void print_instruction_counters() {
   println();
 
   printf1("%s: compute: ", selfie_name);
+  print_instruction_counter_with_nops(ic_sll, nopc_sll, SLL);
+  print(", ");
+  print_instruction_counter_with_nops(ic_srl, nopc_srl, SRL);
+  print(", ");
   print_instruction_counter_with_nops(ic_add, nopc_add, ADD);
   print(", ");
   print_instruction_counter_with_nops(ic_sub, nopc_sub, SUB);
@@ -6573,7 +6591,19 @@ void emit_addi(uint64_t rd, uint64_t rs1, uint64_t immediate) {
 
   ic_addi = ic_addi + 1;
 }
+//TODO: JULS
 
+void emit_sll(uint64_t rd, uint64_t rs1, uint64_t rs2) {
+  emit_instruction(encode_r_format(F7_SLL, rs2, rs1, F3_SLL, rd, OP_OP));
+  
+  ic_sll = ic_sll + 1;
+}
+//TODO:JULS
+void emit_srl(uint64_t rd, uint64_t rs1, uint64_t rs2) {
+  emit_instruction(encode_r_format(F7_SRL, rs2, rs1, F3_SRL, rd, OP_OP));
+
+  ic_srl = ic_srl + 1;
+}
 void emit_add(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emit_instruction(encode_r_format(F7_ADD, rs2, rs1, F3_ADD, rd, OP_OP));
 
@@ -6608,19 +6638,6 @@ void emit_sltu(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emit_instruction(encode_r_format(F7_SLTU, rs2, rs1, F3_SLTU, rd, OP_OP));
 
   ic_sltu = ic_sltu + 1;
-}
-//TODO: JULS
-
-void emit_sll(uint64_t rd, uint64_t rs1, uint64_t rs2) {
-  emit_instruction(encode_r_format(F7_SLL, rs2, rs1, F3_SLL, rd, OP_OP));
-  
-  ic_sll = ic_sll + 1;
-}
-//TODO:JULS
-void emit_srl(uint64_t rd, uint64_t rs1, uint64_t rs2) {
-  emit_instruction(encode_r_format(F7_SRL, rs2, rs1, F3_SRL, rd, OP_OP));
-
-  ic_srl = ic_srl + 1;
 }
 
 void emit_load(uint64_t rd, uint64_t rs1, uint64_t immediate) {
@@ -9002,7 +9019,11 @@ void do_addi() {
 
   ic_addi = ic_addi + 1;
 }
-
+//TODO: JULS
+void print_sll_srl() {
+  print_code_context_for_instruction(pc);
+  printf4("%s %s,%s,%s", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
+}
 void print_add_sub_mul_divu_remu_sltu() {
   print_code_context_for_instruction(pc);
   printf4("%s %s,%s,%s", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
@@ -9675,10 +9696,10 @@ void print_instruction() {
   else if (is == SLTU)
     print_add_sub_mul_divu_remu_sltu();
   //TODO: JULS
-  /*else if (is == SLL)
+  else if (is == SLL)
     print_add_sub_mul_divu_remu_sltu();
   else if (is == SRL)
-    print_add_sub_mul_divu_remu_sltu();*/  
+    print_add_sub_mul_divu_remu_sltu();
   else if (is == BEQ)
     print_beq();
   else if (is == JAL)
@@ -9923,10 +9944,8 @@ void decode() {
     decode_r_format();
     
     if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
-      if (funct7 == F7_ADD){
-        
+      if (funct7 == F7_ADD)      
         is = ADD;
-      }
       else if (funct7 == F7_SUB)
         is = SUB;
       else if (funct7 == F7_MUL)
@@ -9935,10 +9954,8 @@ void decode() {
       if (funct7 == F7_DIVU)
         is = DIVU;
     //TODO: JULS  
-      else if (funct7 == F7_SRL){
+      else if (funct7 == F7_SRL)
         is = SRL;
-        
-      }
     } else if (funct3 == F3_REMU) {
       if (funct7 == F7_REMU)
         is = REMU;
@@ -10059,13 +10076,13 @@ void execute_record() {
     do_add();
   }
   //TODO: JULS
-  /*else if (is == SLL) {
+  else if (is == SLL) {
     record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_sll();
   }else if (is == SRL) {
     record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_srl();
-  }*/else if (is == SUB) {
+  }else if (is == SUB) {
     record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_sub();
   } else if (is == MUL) {
@@ -10131,7 +10148,7 @@ void execute_debug() {
     print_addi_add_sub_mul_divu_remu_sltu_after();
   }
   //TODO: JULS
-  /*else if (is == SLL) {
+  else if (is == SLL) {
     print_add_sub_mul_divu_remu_sltu_before();
     do_sll();
     print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -10139,7 +10156,7 @@ void execute_debug() {
     print_add_sub_mul_divu_remu_sltu_before();
     do_srl();
     print_addi_add_sub_mul_divu_remu_sltu_after();
-  }*/ else if (is == SUB) {
+  } else if (is == SUB) {
     print_add_sub_mul_divu_remu_sltu_before();
     do_sub();
     print_addi_add_sub_mul_divu_remu_sltu_after();

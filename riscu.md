@@ -44,6 +44,10 @@ The parameter `imm` denotes a signed integer value represented by a fixed number
 
 `remu rd,rs1,rs2`: `rd = rs1 % rs2; pc = pc + 4` where `rs1` and `rs2` are unsigned integers.
 
+`sll rd,rs1,rs2`: `rd = rs1 << rs2; pc = pc + 4`
+
+`srl rd,rs1,rs2`: `rd = rs1 >> rs2; pc = pc + 4`
+
 #### TODO: JULS
 #### left shift and right shift implementation
 
