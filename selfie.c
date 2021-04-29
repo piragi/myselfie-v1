@@ -495,7 +495,6 @@ void init_scanner () {
   *(SYMBOLS + SYM_LEQ)          = (uint64_t) "<=";
   *(SYMBOLS + SYM_GT)           = (uint64_t) ">";
   *(SYMBOLS + SYM_GEQ)          = (uint64_t) ">=";
-  //TODO: JULS
   *(SYMBOLS + SYM_LSHIFT)       = (uint64_t) "<<";
   *(SYMBOLS + SYM_RSHIFT)       = (uint64_t) ">>";
 
@@ -670,7 +669,6 @@ uint64_t compile_call(char* procedure);
 uint64_t compile_factor();
 uint64_t compile_term();
 uint64_t compile_simple_expression();
-//TODO: JULS
 uint64_t compile_shift_expression();
 uint64_t compile_expression();
 void     compile_while();
@@ -897,7 +895,6 @@ uint64_t F3_SW    = 2; // 010
 uint64_t F3_BEQ   = 0; // 000
 uint64_t F3_JALR  = 0; // 000
 uint64_t F3_ECALL = 0; // 000
-//TODO: JULS
 uint64_t F3_SLL   = 1; // 001
 uint64_t F3_SRL   = 5; // 101
 
@@ -908,7 +905,6 @@ uint64_t F7_SUB  = 32; // 0100000
 uint64_t F7_DIVU = 1;  // 0000001
 uint64_t F7_REMU = 1;  // 0000001
 uint64_t F7_SLTU = 0;  // 0000000
-//TODO: JULS
 uint64_t F7_SLL = 0;   //0000000
 uint64_t F7_SRL = 0;   //0000000
 
@@ -1086,7 +1082,6 @@ uint64_t ic_beq   = 0;
 uint64_t ic_jal   = 0;
 uint64_t ic_jalr  = 0;
 uint64_t ic_ecall = 0;
-//TODO: JULS
 uint64_t ic_sll  = 0;
 uint64_t ic_srl = 0;
 
@@ -1619,7 +1614,6 @@ void do_sub();
 void do_mul();
 void do_divu();
 void do_remu();
-//TODO: JULS
 void do_sll();
 void do_srl();
 
@@ -1680,7 +1674,6 @@ uint64_t BEQ   = 11;
 uint64_t JAL   = 12;
 uint64_t JALR  = 13;
 uint64_t ECALL = 14;
-// TODO: JULS
 uint64_t SLL   = 15;
 uint64_t SRL   = 16;
 
@@ -1706,20 +1699,13 @@ uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
 // ------------------------- INITIALIZATION ------------------------
 
 void init_disassembler() {
-  //TODO: JULS
-  //experiment with smalloc -> change to +2?!
-  //funktioniert mit +2 aber warum??
+
   MNEMONICS = smalloc((SRL + 1) * SIZEOFUINT64STAR);
 
   *(MNEMONICS + LUI)   = (uint64_t) "lui";
   *(MNEMONICS + ADDI)  = (uint64_t) "addi";
-      //TODO: JULS
-  //REIHENFOLGE WICHTIG?!
-  //malloc corrupted top size??
-  
   *(MNEMONICS + SLL)   = (uint64_t) "sll";
   *(MNEMONICS + SRL)   = (uint64_t) "srl";
-  
   *(MNEMONICS + ADD)   = (uint64_t) "add";
   *(MNEMONICS + SUB)   = (uint64_t) "sub";
   *(MNEMONICS + MUL)   = (uint64_t) "mul";
@@ -1892,7 +1878,6 @@ uint64_t nopc_store = 0;
 uint64_t nopc_beq   = 0;
 uint64_t nopc_jal   = 0;
 uint64_t nopc_jalr  = 0;
-//TODO: JULS
 uint64_t nopc_srl   = 0;
 uint64_t nopc_sll  = 0;
 
@@ -4915,7 +4900,6 @@ uint64_t compile_simple_expression() {
   // type of simple expression is grammar attribute
   return ltype;
 }
-//TODO: JULS
 
 uint64_t compile_shift_expression() {
   uint64_t ltype;
@@ -4957,7 +4941,6 @@ uint64_t compile_expression() {
   uint64_t rtype;
 
   // assert: n = allocated_temporaries
-  // TODO: JULS
   ltype = compile_shift_expression();
 
   // assert: allocated_temporaries == n + 1
@@ -4968,7 +4951,7 @@ uint64_t compile_expression() {
 
     get_symbol();
 
-    // TODO: JULS
+
     rtype = compile_shift_expression();
 
     // assert: allocated_temporaries == n + 2
@@ -6431,8 +6414,7 @@ void decode_u_format() {
 // -----------------------------------------------------------------
 // ---------------------------- BINARY -----------------------------
 // -----------------------------------------------------------------
-//TODO: JULS
-//implement sll srl
+
 uint64_t get_total_number_of_instructions() {
   return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_load + ic_store + ic_beq + ic_jal + ic_jalr + ic_ecall + ic_sll + ic_srl;
 }
@@ -6454,8 +6436,7 @@ void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, uint64
   if (run)
     printf1("[%.2u%%]", (char*) percentage_format(counter, nops));
 }
-//TODO: JULS
-//implement sll and srl
+
 void print_instruction_counters() {
   printf1("%s: init:    ", selfie_name);
   print_instruction_counter_with_nops(ic_lui, nopc_lui, LUI);
@@ -6591,14 +6572,13 @@ void emit_addi(uint64_t rd, uint64_t rs1, uint64_t immediate) {
 
   ic_addi = ic_addi + 1;
 }
-//TODO: JULS
 
 void emit_sll(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emit_instruction(encode_r_format(F7_SLL, rs2, rs1, F3_SLL, rd, OP_OP));
   
   ic_sll = ic_sll + 1;
 }
-//TODO:JULS
+
 void emit_srl(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emit_instruction(encode_r_format(F7_SRL, rs2, rs1, F3_SRL, rd, OP_OP));
 
@@ -9019,7 +8999,7 @@ void do_addi() {
 
   ic_addi = ic_addi + 1;
 }
-//TODO: JULS
+
 void print_sll_srl() {
   print_code_context_for_instruction(pc);
   printf4("%s %s,%s,%s", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
@@ -9037,7 +9017,7 @@ void print_add_sub_mul_divu_remu_sltu_before() {
   print(" |- ");
   print_register_value(rd);
 }
-//TODO: JULS
+
 void do_sll() {
   uint64_t next_rd_value;
 
@@ -9046,14 +9026,10 @@ void do_sll() {
   if (rd != REG_ZR) {
     // semantics of add
     
-    //next_rd_value = *(registers + rs1) *  two_to_the_power_of(*(registers + rs2));
-    next_rd_value = left_shift(*(registers + rs1), *(registers + rs2));
-    print_integer(next_rd_value);
-    print_register_value(rs1);
-    print_register_value(rs2);
+    next_rd_value = *(registers + rs1) *  two_to_the_power_of(*(registers + rs2));
+    //next_rd_value = left_shift(*(registers + rs1), *(registers + rs2));
 
     
-    //next_rd_value = left_shift(*(registers + rs1), *(registers + rs2));
     if (*(registers + rd) != next_rd_value)
       *(registers + rd) = next_rd_value;
     else
@@ -9072,24 +9048,7 @@ void do_srl() {
   update_register_counters();
 
   if (rd != REG_ZR) {
-    // semantics of add
-    //next_rd_value = *(registers + rs1) / two_to_the_power_of(*(registers + rs2));
-    /*uint64_t r1;
-    r1 = *(registers + rs1);
-    print("\nr1: ");
-    print_integer(r1);
-    print("\n");
-        uint64_t r2;
-    r2 = *(registers + rs2);
-    print("\nr2: ");
-    print_integer(r2);
-    print("\n");*/
-    next_rd_value = right_shift(*(registers + rs1), *(registers + rs2));
-    print_register_value(rs1);
-    print_register_value(rs2);
-    //next_rd_value = *(registers + rs1) / two_to_the_power_of(*(registers + rs2));
-    
-
+    next_rd_value = *(registers + rs1) / two_to_the_power_of(*(registers + rs2));
 
     if (*(registers + rd) != next_rd_value)
       *(registers + rd) = next_rd_value;
@@ -9695,7 +9654,6 @@ void print_instruction() {
     print_add_sub_mul_divu_remu_sltu();
   else if (is == SLTU)
     print_add_sub_mul_divu_remu_sltu();
-  //TODO: JULS
   else if (is == SLL)
     print_add_sub_mul_divu_remu_sltu();
   else if (is == SRL)
@@ -9940,20 +9898,19 @@ void decode() {
         is = STORE;
     } else if (funct3 == F3_SW)
       is = STORE;
-  } else if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, SLTU
+  } else if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, SLTU, SLL, SRL
     decode_r_format();
     
-    if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
+    if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL 
       if (funct7 == F7_ADD)      
         is = ADD;
       else if (funct7 == F7_SUB)
         is = SUB;
       else if (funct7 == F7_MUL)
         is = MUL;
-    } else if (funct3 == F3_DIVU) {
+    } else if (funct3 == F3_DIVU) { // = F3_SRL
       if (funct7 == F7_DIVU)
-        is = DIVU;
-    //TODO: JULS  
+        is = DIVU; 
       else if (funct7 == F7_SRL)
         is = SRL;
     } else if (funct3 == F3_REMU) {
@@ -9963,9 +9920,7 @@ void decode() {
       if (funct7 == F7_SLTU)
         is = SLTU;
     } 
-    //TODO: JULS
-    else if (funct3 == F3_SLL) {
-      
+    else if (funct3 == F3_SLL) { 
       if (funct7 == F7_SLL)
         is = SLL;
     }
@@ -10028,13 +9983,10 @@ void execute() {
     do_load();
   else if (is == STORE)
     do_store();
-  //TODO: JULS
-  
   else if (is == SLL)
     do_sll();
   else if (is == SRL)
     do_srl();
-  
   else if (is == ADD)
     do_add();
   else if (is == SUB)
@@ -10075,7 +10027,6 @@ void execute_record() {
     record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_add();
   }
-  //TODO: JULS
   else if (is == SLL) {
     record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_sll();
@@ -10147,7 +10098,6 @@ void execute_debug() {
     do_add();
     print_addi_add_sub_mul_divu_remu_sltu_after();
   }
-  //TODO: JULS
   else if (is == SLL) {
     print_add_sub_mul_divu_remu_sltu_before();
     do_sll();
