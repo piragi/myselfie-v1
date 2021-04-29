@@ -4405,6 +4405,7 @@ uint64_t load_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
 
   // assert: allocated_temporaries == n + 1
 
+  // type of variable or big integer is grammar attribute
   return get_type(entry);
 }
 
@@ -4423,6 +4424,7 @@ void load_integer(uint64_t value) {
     entry = search_global_symbol_table(integer, BIGINT);
 
     if (entry == (uint64_t*) 0) {
+      // allocate memory for big integer in data segment
       data_size = data_size + WORDSIZE;
 
       create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, value, -data_size);
@@ -4441,6 +4443,7 @@ void load_string(char* string) {
 
   length = string_length(string) + 1;
 
+  // allocate memory for string in data segment
   data_size = data_size + round_up(length, WORDSIZE);
 
   create_symbol_table_entry(GLOBAL_TABLE, string, line_number, STRING, UINT64STAR_T, 0, -data_size);
@@ -4484,6 +4487,7 @@ uint64_t procedure_call(uint64_t* entry, char* procedure) {
       emit_jal(REG_RA, get_address(entry) - code_size);
   }
 
+  // return type is grammar attribute
   return type;
 }
 
@@ -4602,6 +4606,7 @@ uint64_t compile_call(char* procedure) {
 
   // assert: allocated_temporaries == n
 
+  // return type is grammar attribute
   return type;
 }
 
@@ -4624,7 +4629,7 @@ uint64_t compile_factor() {
       get_symbol();
   }
 
-  // optional: [ cast ]
+  // optional: cast
   if (symbol == SYM_LPARENTHESIS) {
     get_symbol();
 
@@ -4764,8 +4769,10 @@ uint64_t compile_factor() {
   // assert: allocated_temporaries == n + 1
 
   if (has_cast)
+    // cast is grammar attribute
     return cast;
   else
+    // type of factor is grammar attribute
     return type;
 }
 
@@ -4805,6 +4812,7 @@ uint64_t compile_term() {
 
   // assert: allocated_temporaries == n + 1
 
+  // type of term is grammar attribute
   return ltype;
 }
 
@@ -4879,6 +4887,7 @@ uint64_t compile_simple_expression() {
 
   // assert: allocated_temporaries == n + 1
 
+  // type of simple expression is grammar attribute
   return ltype;
 }
 //TODO: JULS
@@ -5004,6 +5013,7 @@ uint64_t compile_expression() {
 
   // assert: allocated_temporaries == n + 1
 
+  // type of expression is grammar attribute
   return ltype;
 }
 
@@ -5392,6 +5402,7 @@ uint64_t compile_type() {
   } else
     syntax_error_symbol(SYM_UINT64);
 
+  // type is grammar attribute
   return type;
 }
 
@@ -5468,6 +5479,7 @@ uint64_t compile_initialization(uint64_t type) {
   } else if (type != UINT64_T)
     type_warning(type, UINT64_T);
 
+  // initial value is grammar attribute
   return initial_value;
 }
 
@@ -5688,6 +5700,7 @@ void compile_cstar() {
             // global variable declaration
             get_symbol();
 
+            // uninitialized global variables are initialized to 0
             initial_value = 0;
           } else
             // type identifier "=" ...
@@ -5697,6 +5710,7 @@ void compile_cstar() {
           entry = search_global_symbol_table(variable_or_procedure_name, VARIABLE);
 
           if (entry == (uint64_t*) 0) {
+            // allocate memory for global variable in data segment
             data_size = data_size + WORDSIZE;
 
             create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, initial_value, -data_size);
