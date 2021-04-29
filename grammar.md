@@ -57,8 +57,8 @@ statement         = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expressi
 
 call              = identifier "(" [ expression { "," expression } ] ")" .
 
-expression        = simple_expression
-                    [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) simple_expression ] .
+expression        = shift_expression
+                    [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) shift_expression ] .
 
 shift_expression  = simple_expression { ("<<" | ">>") simple_expression } .
 

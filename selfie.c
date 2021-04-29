@@ -418,16 +418,16 @@ uint64_t SYM_LT           = 24; // <
 uint64_t SYM_LEQ          = 25; // <=
 uint64_t SYM_GT           = 26; // >
 uint64_t SYM_GEQ          = 27; // >=
-uint64_t SYM_LSHIFT       = 32; // <<
-uint64_t SYM_RSHIFT       = 33; // >>
+uint64_t SYM_LSHIFT       = 28; // <<
+uint64_t SYM_RSHIFT       = 29; // >>
 
 
 // symbols for bootstrapping
 
-uint64_t SYM_INT      = 28; // int
-uint64_t SYM_CHAR     = 29; // char
-uint64_t SYM_UNSIGNED = 30; // unsigned
-uint64_t SYM_ELLIPSIS = 31; // ...
+uint64_t SYM_INT      = 30; // int
+uint64_t SYM_CHAR     = 31; // char
+uint64_t SYM_UNSIGNED = 32; // unsigned
+uint64_t SYM_ELLIPSIS = 33; // ...
 
 
 uint64_t* SYMBOLS; // strings representing symbols
@@ -464,6 +464,7 @@ uint64_t source_fd   = 0; // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void init_scanner () {
+  //TODO:JULS
   SYMBOLS = smalloc((SYM_ELLIPSIS + 1) * SIZEOFUINT64STAR);
 
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
@@ -494,6 +495,8 @@ void init_scanner () {
   *(SYMBOLS + SYM_LEQ)          = (uint64_t) "<=";
   *(SYMBOLS + SYM_GT)           = (uint64_t) ">";
   *(SYMBOLS + SYM_GEQ)          = (uint64_t) ">=";
+  *(SYMBOLS + SYM_LSHIFT)       = (uint64_t) "<<";
+  *(SYMBOLS + SYM_RSHIFT)       = (uint64_t) ">>";
 
   *(SYMBOLS + SYM_INT)      = (uint64_t) "int";
   *(SYMBOLS + SYM_CHAR)     = (uint64_t) "char";
@@ -666,6 +669,7 @@ uint64_t compile_call(char* procedure);
 uint64_t compile_factor();
 uint64_t compile_term();
 uint64_t compile_simple_expression();
+uint64_t compile_shift_expression();
 uint64_t compile_expression();
 void     compile_while();
 void     compile_if();
@@ -891,6 +895,8 @@ uint64_t F3_SW    = 2; // 010
 uint64_t F3_BEQ   = 0; // 000
 uint64_t F3_JALR  = 0; // 000
 uint64_t F3_ECALL = 0; // 000
+uint64_t F3_SLL   = 1; // 001
+uint64_t F3_SRL   = 5; // 101
 
 // f7-codes
 uint64_t F7_ADD  = 0;  // 0000000
@@ -899,6 +905,8 @@ uint64_t F7_SUB  = 32; // 0100000
 uint64_t F7_DIVU = 1;  // 0000001
 uint64_t F7_REMU = 1;  // 0000001
 uint64_t F7_SLTU = 0;  // 0000000
+uint64_t F7_SLL = 0;   //0000000
+uint64_t F7_SRL = 0;   //0000000
 
 // f12-codes (immediates)
 uint64_t F12_ECALL = 0; // 000000000000
@@ -953,6 +961,10 @@ void emit_mul(uint64_t rd, uint64_t rs1, uint64_t rs2);
 void emit_divu(uint64_t rd, uint64_t rs1, uint64_t rs2);
 void emit_remu(uint64_t rd, uint64_t rs1, uint64_t rs2);
 void emit_sltu(uint64_t rd, uint64_t rs1, uint64_t rs2);
+//TODO:JULS
+void emit_sll(uint64_t rd, uint64_t rs1, uint64_t rs2);
+void emit_srl(uint64_t rd, uint64_t rs1, uint64_t rs2);
+
 
 void emit_load(uint64_t rd, uint64_t rs1, uint64_t immediate);
 void emit_store(uint64_t rs1, uint64_t immediate, uint64_t rs2);
@@ -1070,6 +1082,9 @@ uint64_t ic_beq   = 0;
 uint64_t ic_jal   = 0;
 uint64_t ic_jalr  = 0;
 uint64_t ic_ecall = 0;
+uint64_t ic_sll  = 0;
+uint64_t ic_srl = 0;
+
 
 char* binary_name = (char*) 0; // file name of binary
 
@@ -1103,6 +1118,8 @@ void reset_instruction_counters() {
   ic_jal   = 0;
   ic_jalr  = 0;
   ic_ecall = 0;
+  ic_sll = 0;
+  ic_srl = 0;
 }
 
 // -----------------------------------------------------------------
@@ -1597,6 +1614,8 @@ void do_sub();
 void do_mul();
 void do_divu();
 void do_remu();
+void do_sll();
+void do_srl();
 
 void do_sltu();
 
@@ -1655,6 +1674,8 @@ uint64_t BEQ   = 11;
 uint64_t JAL   = 12;
 uint64_t JALR  = 13;
 uint64_t ECALL = 14;
+uint64_t SLL   = 15;
+uint64_t SRL   = 16;
 
 uint64_t* MNEMONICS; // assembly mnemonics of instructions
 
@@ -1678,10 +1699,13 @@ uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
 // ------------------------- INITIALIZATION ------------------------
 
 void init_disassembler() {
-  MNEMONICS = smalloc((ECALL + 1) * SIZEOFUINT64STAR);
+
+  MNEMONICS = smalloc((SRL + 1) * SIZEOFUINT64STAR);
 
   *(MNEMONICS + LUI)   = (uint64_t) "lui";
   *(MNEMONICS + ADDI)  = (uint64_t) "addi";
+  *(MNEMONICS + SLL)   = (uint64_t) "sll";
+  *(MNEMONICS + SRL)   = (uint64_t) "srl";
   *(MNEMONICS + ADD)   = (uint64_t) "add";
   *(MNEMONICS + SUB)   = (uint64_t) "sub";
   *(MNEMONICS + MUL)   = (uint64_t) "mul";
@@ -1699,6 +1723,8 @@ void init_disassembler() {
   *(MNEMONICS + JAL)   = (uint64_t) "jal";
   *(MNEMONICS + JALR)  = (uint64_t) "jalr";
   *(MNEMONICS + ECALL) = (uint64_t) "ecall";
+
+
 }
 
 // -----------------------------------------------------------------
@@ -1852,6 +1878,8 @@ uint64_t nopc_store = 0;
 uint64_t nopc_beq   = 0;
 uint64_t nopc_jal   = 0;
 uint64_t nopc_jalr  = 0;
+uint64_t nopc_srl   = 0;
+uint64_t nopc_sll  = 0;
 
 // source profile
 
@@ -1923,6 +1951,8 @@ void reset_interpreter() {
 void reset_nop_counters() {
   nopc_lui   = 0;
   nopc_addi  = 0;
+  nopc_sll  = 0;
+  nopc_srl  = 0;
   nopc_add   = 0;
   nopc_sub   = 0;
   nopc_mul   = 0;
@@ -1934,6 +1964,8 @@ void reset_nop_counters() {
   nopc_beq   = 0;
   nopc_jal   = 0;
   nopc_jalr  = 0;
+  nopc_sll   = 0;
+  nopc_srl   = 0;
 }
 
 void reset_source_profile() {
@@ -3621,6 +3653,27 @@ void get_symbol() {
 
             literal = atohex(integer);
         }
+        while (is_character_digit()) {
+          if (i >= MAX_INTEGER_LENGTH) {
+            if (integer_is_signed)
+              syntax_error_message("signed integer out of bound");
+            else
+              syntax_error_message("integer out of bound");
+
+            exit(EXITCODE_SCANNERERROR);
+          }
+
+          store_character(integer, i, character);
+
+          i = i + 1;
+
+          get_character();
+        }
+
+        store_character(integer, i, 0); // null-terminated string
+
+        literal = atoi(integer);
+
         }
 
         else if (is_character_digit()){
@@ -3796,12 +3849,13 @@ void get_symbol() {
           get_character();
 
           symbol = SYM_LSHIFT;
-        }if (character == CHAR_EQUAL) {
+        }else if (character == CHAR_EQUAL) {
           get_character();
 
           symbol = SYM_LEQ;
         } else
           symbol = SYM_LT;
+          
 
       } else if (character == CHAR_GT) {
         get_character();
@@ -3810,7 +3864,7 @@ void get_symbol() {
           get_character();
 
           symbol = SYM_RSHIFT;
-        }if (character == CHAR_EQUAL) {
+        }else if (character == CHAR_EQUAL) {
           get_character();
 
           symbol = SYM_GEQ;
@@ -4784,7 +4838,7 @@ uint64_t compile_simple_expression() {
   ltype = compile_term();
 
   // assert: allocated_temporaries == n + 1
-
+ 
   // + or - ?
   while (is_plus_or_minus()) {
     operator_symbol = symbol;
@@ -4847,14 +4901,47 @@ uint64_t compile_simple_expression() {
   return ltype;
 }
 
+uint64_t compile_shift_expression() {
+  uint64_t ltype;
+  uint64_t operator_symbol;
+  uint64_t rtype;
+
+  ltype = compile_simple_expression();
+
+  while (is_shift()) {
+    operator_symbol = symbol;
+
+    get_symbol();
+
+    rtype = compile_simple_expression();
+    
+
+    // assert: allocated_temporaries == n + 2
+    if (ltype != rtype)
+      type_warning(ltype, rtype);
+
+    if (operator_symbol == SYM_LSHIFT) {
+      emit_sll(previous_temporary(), previous_temporary(), current_temporary());
+    }
+    else if (operator_symbol == SYM_RSHIFT) {
+      emit_srl(previous_temporary(), previous_temporary(), current_temporary());
+    }
+
+    tfree(1);
+  }
+
+  // assert: allocated_temporaries == n + 1
+
+  return ltype;
+}
+
 uint64_t compile_expression() {
   uint64_t ltype;
   uint64_t operator_symbol;
   uint64_t rtype;
 
   // assert: n = allocated_temporaries
-
-  ltype = compile_simple_expression();
+  ltype = compile_shift_expression();
 
   // assert: allocated_temporaries == n + 1
 
@@ -4864,7 +4951,8 @@ uint64_t compile_expression() {
 
     get_symbol();
 
-    rtype = compile_simple_expression();
+
+    rtype = compile_shift_expression();
 
     // assert: allocated_temporaries == n + 2
 
@@ -6328,11 +6416,11 @@ void decode_u_format() {
 // -----------------------------------------------------------------
 
 uint64_t get_total_number_of_instructions() {
-  return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_load + ic_store + ic_beq + ic_jal + ic_jalr + ic_ecall;
+  return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_load + ic_store + ic_beq + ic_jal + ic_jalr + ic_ecall + ic_sll + ic_srl;
 }
 
 uint64_t get_total_number_of_nops() {
-  return nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_load + nopc_store + nopc_beq + nopc_jal + nopc_jalr;
+  return nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_load + nopc_store + nopc_beq + nopc_jal + nopc_jalr + nopc_sll + nopc_srl;
 }
 
 void print_instruction_counter(uint64_t counter, uint64_t ins) {
@@ -6363,6 +6451,10 @@ void print_instruction_counters() {
   println();
 
   printf1("%s: compute: ", selfie_name);
+  print_instruction_counter_with_nops(ic_sll, nopc_sll, SLL);
+  print(", ");
+  print_instruction_counter_with_nops(ic_srl, nopc_srl, SRL);
+  print(", ");
   print_instruction_counter_with_nops(ic_add, nopc_add, ADD);
   print(", ");
   print_instruction_counter_with_nops(ic_sub, nopc_sub, SUB);
@@ -6481,6 +6573,17 @@ void emit_addi(uint64_t rd, uint64_t rs1, uint64_t immediate) {
   ic_addi = ic_addi + 1;
 }
 
+void emit_sll(uint64_t rd, uint64_t rs1, uint64_t rs2) {
+  emit_instruction(encode_r_format(F7_SLL, rs2, rs1, F3_SLL, rd, OP_OP));
+  
+  ic_sll = ic_sll + 1;
+}
+
+void emit_srl(uint64_t rd, uint64_t rs1, uint64_t rs2) {
+  emit_instruction(encode_r_format(F7_SRL, rs2, rs1, F3_SRL, rd, OP_OP));
+
+  ic_srl = ic_srl + 1;
+}
 void emit_add(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emit_instruction(encode_r_format(F7_ADD, rs2, rs1, F3_ADD, rd, OP_OP));
 
@@ -8897,6 +9000,10 @@ void do_addi() {
   ic_addi = ic_addi + 1;
 }
 
+void print_sll_srl() {
+  print_code_context_for_instruction(pc);
+  printf4("%s %s,%s,%s", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
+}
 void print_add_sub_mul_divu_remu_sltu() {
   print_code_context_for_instruction(pc);
   printf4("%s %s,%s,%s", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
@@ -8909,6 +9016,50 @@ void print_add_sub_mul_divu_remu_sltu_before() {
   print_register_value(rs2);
   print(" |- ");
   print_register_value(rd);
+}
+
+void do_sll() {
+  uint64_t next_rd_value;
+
+  update_register_counters();
+
+  if (rd != REG_ZR) {
+    // semantics of add
+    
+    next_rd_value = *(registers + rs1) *  two_to_the_power_of(*(registers + rs2));
+    //next_rd_value = left_shift(*(registers + rs1), *(registers + rs2));
+
+    
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_sll = nopc_sll + 1;
+  } else
+    nopc_sll = nopc_sll + 1;
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  ic_sll = ic_sll + 1;
+}
+
+void do_srl() {
+  uint64_t next_rd_value;
+
+  update_register_counters();
+
+  if (rd != REG_ZR) {
+    next_rd_value = *(registers + rs1) / two_to_the_power_of(*(registers + rs2));
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_srl = nopc_srl + 1;
+  } else
+    nopc_srl = nopc_srl + 1;
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  ic_srl = ic_srl + 1;
 }
 
 void do_add() {
@@ -9503,6 +9654,10 @@ void print_instruction() {
     print_add_sub_mul_divu_remu_sltu();
   else if (is == SLTU)
     print_add_sub_mul_divu_remu_sltu();
+  else if (is == SLL)
+    print_add_sub_mul_divu_remu_sltu();
+  else if (is == SRL)
+    print_add_sub_mul_divu_remu_sltu();
   else if (is == BEQ)
     print_beq();
   else if (is == JAL)
@@ -9743,25 +9898,31 @@ void decode() {
         is = STORE;
     } else if (funct3 == F3_SW)
       is = STORE;
-  } else if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, SLTU
+  } else if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, SLTU, SLL, SRL
     decode_r_format();
-
-    if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
-      if (funct7 == F7_ADD)
+    
+    if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL 
+      if (funct7 == F7_ADD)      
         is = ADD;
       else if (funct7 == F7_SUB)
         is = SUB;
       else if (funct7 == F7_MUL)
         is = MUL;
-    } else if (funct3 == F3_DIVU) {
+    } else if (funct3 == F3_DIVU) { // = F3_SRL
       if (funct7 == F7_DIVU)
-        is = DIVU;
+        is = DIVU; 
+      else if (funct7 == F7_SRL)
+        is = SRL;
     } else if (funct3 == F3_REMU) {
       if (funct7 == F7_REMU)
         is = REMU;
     } else if (funct3 == F3_SLTU) {
       if (funct7 == F7_SLTU)
         is = SLTU;
+    } 
+    else if (funct3 == F3_SLL) { 
+      if (funct7 == F7_SLL)
+        is = SLL;
     }
   } else if (opcode == OP_BRANCH) {
     decode_b_format();
@@ -9822,6 +9983,10 @@ void execute() {
     do_load();
   else if (is == STORE)
     do_store();
+  else if (is == SLL)
+    do_sll();
+  else if (is == SRL)
+    do_srl();
   else if (is == ADD)
     do_add();
   else if (is == SUB)
@@ -9844,6 +10009,7 @@ void execute() {
     do_lui();
   else if (is == ECALL)
     do_ecall();
+
 }
 
 void execute_record() {
@@ -9860,7 +10026,14 @@ void execute_record() {
   } else if (is == ADD) {
     record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_add();
-  } else if (is == SUB) {
+  }
+  else if (is == SLL) {
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
+    do_sll();
+  }else if (is == SRL) {
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
+    do_srl();
+  }else if (is == SUB) {
     record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_sub();
   } else if (is == MUL) {
@@ -9923,6 +10096,15 @@ void execute_debug() {
   } else if (is == ADD) {
     print_add_sub_mul_divu_remu_sltu_before();
     do_add();
+    print_addi_add_sub_mul_divu_remu_sltu_after();
+  }
+  else if (is == SLL) {
+    print_add_sub_mul_divu_remu_sltu_before();
+    do_sll();
+    print_addi_add_sub_mul_divu_remu_sltu_after();
+  }else if (is == SRL) {
+    print_add_sub_mul_divu_remu_sltu_before();
+    do_srl();
     print_addi_add_sub_mul_divu_remu_sltu_after();
   } else if (is == SUB) {
     print_add_sub_mul_divu_remu_sltu_before();
