@@ -34,6 +34,8 @@ digit  = "0" | ... | "9" .
 letter = "a" | ... | "z" | "A" | ... | "Z" .
 
 hex_letter = "a" | ... | "f" | "A" | ... | "F" | digit .
+
+logical_operator = "&" | "|" | "~" .
 ```
 
 C\* Grammar:
