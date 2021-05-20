@@ -10,7 +10,7 @@ C\* is a tiny subset of the programming language C. C\* features global variable
 
 C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
 
-C\* Symbols: `integer_literal`, `character_literal`, `string_literal`, `identifier`, `hex_literal`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&`, `|`, `~`,
+C\* Symbols: `integer_literal`, `character_literal`, `string_literal`, `identifier`, `hex_literal`, `,`, `;`, `(`, `)`, `[`, `]`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&`, `|`, `~`,
 
 with:
 
@@ -43,6 +43,7 @@ C\* Grammar:
 ```
 cstar             = { type identifier
                       [ "=" [ cast ] [ "-" ] ( integer_literal | character_literal ) ] ";" |
+                      type identifier "[" integer_literal "]" |
                     ( "void" | type ) identifier procedure } .
 
 type              = "uint64_t" [ "*" ] .
@@ -52,9 +53,9 @@ cast              = "(" type ")" .
 procedure         = "(" [ variable { "," variable } ] ")" ( ";" |
                     "{" { variable ";" } { statement } "}" ) .
 
-variable          = type identifier .
+variable          = type identifier [ "[" integer_literal "]" ] .
 
-statement         = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression ";" |
+statement         = ( [ "*" ] identifier [ "[" expression "]" ] | "*" "(" expression ")" ) "=" expression ";" |
                     call ";" | while | if | return ";" .
 
 call              = identifier "(" [ expression { "," expression } ] ")" .
@@ -74,7 +75,7 @@ term              = factor { ( "*" | "/" | "%" ) factor } .
 
 factor            = [ "~" ] [ cast ] [ "-" ] [ "*" ]
                     ( integer_literal | character_literal | string_literal |
-                      identifier | call | "(" expression ")" ) .
+                      identifier [ "[" expression "]" ] | call | "(" expression ")" ) .
 
 while             = "while" "(" expression ")"
                       ( statement | "{" { statement } "}" ) .
