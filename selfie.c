@@ -564,8 +564,6 @@ uint64_t report_undefined_procedures();
 // | 8 | elements| UINT64ARRAY_T elements
 // +---+---------+
 
-//TODO: JULS we want to know how many entries it got, maybe additional parameter for the 
-
 uint64_t* allocate_symbol_table_entry() {
   return smalloc(3 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
 }
@@ -593,7 +591,7 @@ void set_elements(uint64_t* entry, uint64_t* elements) { *(entry + 8) = (uint64_
 // ------------------------ ARRAY DIMENSIONS -----------------------
 
 void create_array_dimension(uint64_t* head, uint64_t dimension);
-uint64_t mul_array_dimension(uint64_t* head, uint64_t dimension);
+void mul_array_dimension(uint64_t* head);
 
 // array dimension:
 // +---+----------+
@@ -4183,7 +4181,7 @@ void create_array_dimension(uint64_t* head, uint64_t dimension){
   set_next_dimension(head, new_entry);
 
 }
-uint64_t mul_array_dimension(uint64_t* head, uint64_t dimension){
+void mul_array_dimension(uint64_t* head){
 
   while(get_next_dimension(head) != (uint64_t*) 0){
     head = get_next_dimension(head);
@@ -4192,7 +4190,6 @@ uint64_t mul_array_dimension(uint64_t* head, uint64_t dimension){
     emit_mul(previous_temporary(), previous_temporary(), current_temporary());
     tfree(1);
   }
-  return dimension;
 }
 
 // -----------------------------------------------------------------
@@ -4883,8 +4880,9 @@ uint64_t compile_factor() {
     } else if (symbol == SYM_LBRACKET) {
       get_symbol();
       compile_expression();
+      
       dimensions = get_elements(get_variable_or_big_int(variable_or_procedure_name, VARIABLE));
-      mul_array_dimension(dimensions, 1);
+      mul_array_dimension(dimensions);
 
       if(symbol == SYM_RBRACKET){
         get_symbol();
@@ -4895,8 +4893,9 @@ uint64_t compile_factor() {
 
           if(symbol == SYM_RBRACKET){
             get_symbol();
+
             dimensions = get_next_dimension(dimensions);
-            mul_array_dimension(dimensions, 1);
+            mul_array_dimension(dimensions);
             emit_add(previous_temporary(), current_temporary(), previous_temporary());
             tfree(1);
           }
@@ -5605,7 +5604,7 @@ void compile_statement() {
       compile_expression();
       dimensions = get_elements(get_variable_or_big_int(variable_or_procedure_name, VARIABLE));
 
-      mul_array_dimension(dimensions, 1);
+      mul_array_dimension(dimensions);
 
       if(symbol == SYM_RBRACKET){
         get_symbol();
@@ -5616,8 +5615,9 @@ void compile_statement() {
 
           if(symbol == SYM_RBRACKET){
             get_symbol();
+
             dimensions = get_next_dimension(dimensions);
-            mul_array_dimension(dimensions, 1);
+            mul_array_dimension(dimensions);
             emit_add(previous_temporary(), current_temporary(), previous_temporary());
             tfree(1);
           }
@@ -5663,7 +5663,6 @@ void compile_statement() {
             tfree(2);
           }
           tfree(1);
-          //TODO JULS: geh ich da eins zu hoch?
           number_of_assignments = number_of_assignments + 1;
 
           if (symbol == SYM_SEMICOLON)
@@ -6090,6 +6089,7 @@ void compile_cstar() {
                     get_symbol();
                     if(symbol == SYM_RBRACKET){
                       get_symbol();
+
                       create_array_dimension(dimensions, literal);
                       range_array_cstar = range_array_cstar * literal;
                     }

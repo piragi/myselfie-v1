@@ -43,7 +43,7 @@ C\* Grammar:
 ```
 cstar             = { type identifier
                       [ "=" [ cast ] [ "-" ] ( integer_literal | character_literal ) ] ";" |
-                      type identifier "[" integer_literal "]" |
+                      type identifier "[" integer_literal "]" { "[" integer_literal "]" } |
                     ( "void" | type ) identifier procedure } .
 
 type              = "uint64_t" [ "*" ] .
@@ -53,9 +53,9 @@ cast              = "(" type ")" .
 procedure         = "(" [ variable { "," variable } ] ")" ( ";" |
                     "{" { variable ";" } { statement } "}" ) .
 
-variable          = type identifier [ "[" integer_literal "]" ] .
+variable          = type identifier [ "[" integer_literal "]" { "[" integer_literal "]" } ] .
 
-statement         = ( [ "*" ] identifier [ "[" expression "]" ] | "*" "(" expression ")" ) "=" expression ";" |
+statement         = ( [ "*" ] identifier [ "[" expression "]" { "[" expression "]" } ] | "*" "(" expression ")" ) "=" expression ";" |
                     call ";" | while | if | return ";" .
 
 call              = identifier "(" [ expression { "," expression } ] ")" .
@@ -75,7 +75,7 @@ term              = factor { ( "*" | "/" | "%" ) factor } .
 
 factor            = [ "~" ] [ cast ] [ "-" ] [ "*" ]
                     ( integer_literal | character_literal | string_literal |
-                      identifier [ "[" expression "]" ] | call | "(" expression ")" ) .
+                      identifier [ "[" expression "]" { "[" expression "]" } ] | call | "(" expression ")" ) .
 
 while             = "while" "(" expression ")"
                       ( statement | "{" { statement } "}" ) .
