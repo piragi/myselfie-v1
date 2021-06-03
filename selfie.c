@@ -431,14 +431,15 @@ uint64_t SYM_OR           = 31; // |
 uint64_t SYM_NOT          = 32; // ~
 uint64_t SYM_LBRACKET     = 33; // [
 uint64_t SYM_RBRACKET     = 34; // ]
+uint64_t SYM_STRUCT       = 35; // struct
 
 
 // symbols for bootstrapping
 
-uint64_t SYM_INT      = 35; // int
-uint64_t SYM_CHAR     = 36; // char
-uint64_t SYM_UNSIGNED = 37; // unsigned
-uint64_t SYM_ELLIPSIS = 38; // ...
+uint64_t SYM_INT      = 36; // int
+uint64_t SYM_CHAR     = 37; // char
+uint64_t SYM_UNSIGNED = 38; // unsigned
+uint64_t SYM_ELLIPSIS = 39; // ...
 
 
 uint64_t* SYMBOLS; // strings representing symbols
@@ -511,7 +512,8 @@ void init_scanner () {
   *(SYMBOLS + SYM_OR)           = (uint64_t) "|";
   *(SYMBOLS + SYM_NOT)          = (uint64_t) "~";
   *(SYMBOLS + SYM_LBRACKET)     = (uint64_t) "[";
-  *(SYMBOLS + SYM_RBRACKET)     = (uint64_t) "]"; 
+  *(SYMBOLS + SYM_RBRACKET)     = (uint64_t) "]";
+  *(SYMBOLS + SYM_STRUCT)       = (uint64_t) "struct";
 
   *(SYMBOLS + SYM_INT)      = (uint64_t) "int";
   *(SYMBOLS + SYM_CHAR)     = (uint64_t) "char";
@@ -552,20 +554,21 @@ uint64_t is_undefined_procedure(uint64_t* entry);
 uint64_t report_undefined_procedures();
 
 // symbol table entry:
-// +---+---------+
-// | 0 | next    | pointer to next entry
-// | 1 | string  | identifier string, big integer as string, string literal
-// | 2 | line#   | source line number
-// | 3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE
-// | 4 | type    | UINT64_T, UINT64STAR_T, VOID_T, UINT64ARRAY_T
-// | 5 | value   | VARIABLE: initial value
-// | 6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
-// | 7 | scope   | REG_GP (global), REG_S0 (local)
-// | 8 | elements| UINT64ARRAY_T elements
-// +---+---------+
+// +---+-------------+
+// | 0 | next        | pointer to next entry
+// | 1 | string      | identifier string, big integer as string, string literal
+// | 2 | line#       | source line number
+// | 3 | class       | VARIABLE, BIGINT, STRING, PROCEDURE, TYPE
+// | 4 | type        | UINT64_T, UINT64STAR_T, VOID_T, UINT64ARRAY_T, STRUCT_T
+// | 5 | value       | VARIABLE: initial value
+// | 6 | address     | VARIABLE, BIGINT, STRING, STRUCT: offset, PROCEDURE: address
+// | 7 | scope       | REG_GP (global), REG_S0 (local)
+// | 8 | elements    | UINT64ARRAY_T: elements, STRUCT_T: fields
+// | 9 | struct_type | STRUCT: structtype
+// +---+-------------+
 
 uint64_t* allocate_symbol_table_entry() {
-  return smalloc(3 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
+  return smalloc(4 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
 }
 
 uint64_t* get_next_entry(uint64_t* entry)  { return (uint64_t*) *entry; }
@@ -577,16 +580,20 @@ uint64_t  get_value(uint64_t* entry)       { return             *(entry + 5); }
 uint64_t  get_address(uint64_t* entry)     { return             *(entry + 6); }
 uint64_t  get_scope(uint64_t* entry)       { return             *(entry + 7); }
 uint64_t*  get_elements(uint64_t* entry)   { return (uint64_t*) *(entry + 8); }
+char*     get_structtype(uint64_t* entry)  { return (char*)     *(entry + 9); }
 
-void set_next_entry(uint64_t* entry, uint64_t* next)   { *entry       = (uint64_t) next; }
-void set_string(uint64_t* entry, char* identifier)     { *(entry + 1) = (uint64_t) identifier; }
-void set_line_number(uint64_t* entry, uint64_t line)   { *(entry + 2) = line; }
-void set_class(uint64_t* entry, uint64_t class)        { *(entry + 3) = class; }
-void set_type(uint64_t* entry, uint64_t type)          { *(entry + 4) = type; }
-void set_value(uint64_t* entry, uint64_t value)        { *(entry + 5) = value; }
-void set_address(uint64_t* entry, uint64_t address)    { *(entry + 6) = address; }
-void set_scope(uint64_t* entry, uint64_t scope)        { *(entry + 7) = scope; }
-void set_elements(uint64_t* entry, uint64_t* elements) { *(entry + 8) = (uint64_t) elements; }
+
+void set_next_entry(uint64_t* entry, uint64_t* next)       { *entry       = (uint64_t) next; }
+void set_string(uint64_t* entry, char* identifier)         { *(entry + 1) = (uint64_t) identifier; }
+void set_line_number(uint64_t* entry, uint64_t line)       { *(entry + 2) = line; }
+void set_class(uint64_t* entry, uint64_t class)            { *(entry + 3) = class; }
+void set_type(uint64_t* entry, uint64_t type)              { *(entry + 4) = type; }
+void set_value(uint64_t* entry, uint64_t value)            { *(entry + 5) = value; }
+void set_address(uint64_t* entry, uint64_t address)        { *(entry + 6) = address; }
+void set_scope(uint64_t* entry, uint64_t scope)            { *(entry + 7) = scope; }
+void set_elements(uint64_t* entry, uint64_t* elements)     { *(entry + 8) = (uint64_t) elements; }
+void set_structtype(uint64_t* entry, char* structtype)     { *(entry + 9) = (uint64_t) structtype; }
+
 
 // ------------------------ ARRAY DIMENSIONS -----------------------
 
@@ -609,6 +616,35 @@ uint64_t  get_dimension(uint64_t* entry_dim)       { return             *(entry_
 void set_next_dimension(uint64_t* entry_dim, uint64_t* next_dim)   { *entry_dim       = (uint64_t) next_dim; }
 void set_dimension(uint64_t* entry_dim, uint64_t dimension)        { *(entry_dim + 1) = dimension; }
 
+// ------------------------ STRUCT FIELDS ------------------------
+
+void create_struct_field(uint64_t* head, uint64_t field_type, char* field_structtype, char* field_name);
+
+// Struct Fields:
+// +---+------------------+
+// | 0 | next             | pointer to next entry
+// | 1 | fieldtype        | Fieldtype
+// | 2 | fieldname        | Fieldname
+// | 3 | field structtype | Field Structtype
+// +---+------------------+
+
+uint64_t* allocate_struct_field_entry() {
+  return smalloc(3 * SIZEOFUINT64STAR + 1 * SIZEOFUINT64);
+}
+
+uint64_t* get_next_field(uint64_t* entry_field)         { return (uint64_t*) *entry_field; }
+uint64_t  get_fieldtype(uint64_t* entry_field)          { return             *(entry_field + 1); }
+char*     get_fieldname(uint64_t* entry_field)          { return (char*)     *(entry_field + 2); }
+char*     get_field_structtype(uint64_t* entry_field)   { return (char*)     *(entry_field + 3); }
+
+
+void set_next_field(uint64_t* entry_field, uint64_t* next_field)   { *entry_field       = (uint64_t) next_field; }
+void set_fieldtype(uint64_t* entry_field, uint64_t fieldtype)      { *(entry_field + 1) = fieldtype; }
+void set_fieldname(uint64_t* entry_field, char* fieldname)         { *(entry_field + 2) = (uint64_t) fieldname; }
+void set_field_structtype(uint64_t* entry_field, char* fieldname)  { *(entry_field + 3) = (uint64_t) fieldname; }
+
+
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // classes
@@ -616,12 +652,14 @@ uint64_t VARIABLE  = 1;
 uint64_t BIGINT    = 2;
 uint64_t STRING    = 3;
 uint64_t PROCEDURE = 4;
+uint64_t TYPE      = 5;
 
 // types
 uint64_t UINT64_T     = 1;
 uint64_t UINT64STAR_T = 2;
 uint64_t VOID_T       = 3;
 uint64_t UINT64ARRAY_T = 4;
+uint64_t STRUCT_T     = 5;
 
 // symbol tables
 uint64_t GLOBAL_TABLE  = 1;
@@ -724,6 +762,7 @@ uint64_t compile_type();
 uint64_t compile_variable(uint64_t offset);
 uint64_t compile_initialization(uint64_t type);
 void     compile_procedure(char* procedure, uint64_t type);
+void     compile_struct(char* struct_name, uint64_t type);
 void     compile_cstar();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -3653,6 +3692,8 @@ uint64_t identifier_or_keyword() {
   else if (identifier_string_match(SYM_UNSIGNED))
     // selfie bootstraps unsigned to uint64_t!
     return SYM_UINT64;
+  else if (identifier_string_match(SYM_STRUCT))
+    return SYM_STRUCT;
   else
     return SYM_IDENTIFIER;
 }
@@ -4193,6 +4234,27 @@ void mul_array_dimension(uint64_t* head){
 }
 
 // -----------------------------------------------------------------
+// ------------------------ STRUCT FIELD ---------------------------
+// -----------------------------------------------------------------
+void create_struct_field(uint64_t* head, uint64_t field_type, char* field_structtype, char* field_name){
+  uint64_t* new_entry;
+
+  new_entry = allocate_struct_field_entry();
+
+  while (get_next_field(head) != (uint64_t*) 0){
+    head = get_next_field(head);
+
+  }
+  if (field_type == 0)
+    set_field_structtype(new_entry, field_structtype);
+  else
+    set_fieldtype(new_entry, field_type);
+  set_fieldname(new_entry, field_name);
+  set_next_field(head, new_entry);
+
+}
+
+// -----------------------------------------------------------------
 // ---------------------------- PARSER -----------------------------
 // -----------------------------------------------------------------
 
@@ -4342,6 +4404,8 @@ uint64_t look_for_type() {
   if (symbol == SYM_UINT64)
     return 0;
   else if (symbol == SYM_VOID)
+    return 0;
+  else if (symbol == SYM_STRUCT)
     return 0;
   else if (symbol == SYM_EOF)
     return 0;
@@ -5739,6 +5803,9 @@ uint64_t compile_type() {
 
       get_symbol();
     }
+  } else if (symbol == SYM_STRUCT) {
+    type = STRUCT_T;
+    get_symbol();
   } else
     syntax_error_symbol(SYM_UINT64);
 
@@ -5750,30 +5817,32 @@ uint64_t compile_variable(uint64_t offset) {
   uint64_t type;
   uint64_t range_array;
   uint64_t* dimensions;
+  char* struct_type;
 
   dimensions = (uint64_t*) 0;
+  struct_type = (char*) 0;
   range_array = 0;
 
   type = compile_type();
 
   if (symbol == SYM_IDENTIFIER) {
     get_symbol();
-    if(symbol == SYM_LBRACKET){
+    if (symbol == SYM_LBRACKET){
       get_symbol();
-      if(symbol == SYM_INTEGER){
+      if (symbol == SYM_INTEGER){
         get_symbol();
-        if(symbol == SYM_RBRACKET){
+        if (symbol == SYM_RBRACKET){
           get_symbol();
           range_array = literal * WORDSIZE;
           
           dimensions = allocate_array_dimensions_entry();
           set_dimension(dimensions, literal);
           
-          while(symbol == SYM_LBRACKET){
+          while (symbol == SYM_LBRACKET){
             get_symbol();
-            if(symbol == SYM_INTEGER){
+            if (symbol == SYM_INTEGER){
               get_symbol();
-              if(symbol == SYM_RBRACKET){
+              if (symbol == SYM_RBRACKET){
                 get_symbol();
                 create_array_dimension(dimensions, literal);
 
@@ -5786,13 +5855,25 @@ uint64_t compile_variable(uint64_t offset) {
           type = UINT64ARRAY_T;
         }
       }
-    }
-    else
+    } else if (symbol == SYM_ASTERISK) {
+      struct_type = identifier;
+      get_symbol();
+      
+      if (symbol == SYM_IDENTIFIER){
+        get_symbol();
+        //actual offset needs to be calculated
+        //type abspeichern
+        offset = offset + WORDSIZE;
+      }
+    } else
       offset = offset + WORDSIZE;
     // TODO: check if identifier has already been declared
     create_symbol_table_entry(LOCAL_TABLE, identifier, line_number, VARIABLE, type, 0, -offset);
-    if((uint64_t) dimensions != 0)
+    if ((uint64_t) dimensions != 0)
       set_elements(get_variable_or_big_int(identifier, VARIABLE), dimensions);
+    if ((uint64_t) struct_type != 0)
+      set_structtype(get_variable_or_big_int(identifier, VARIABLE), struct_type);
+
 
   } else {
     syntax_error_symbol(SYM_IDENTIFIER);
@@ -5979,7 +6060,7 @@ void compile_procedure(char* procedure, uint64_t type) {
 
     number_of_local_variable_bytes = 0;
 
-    while (symbol == SYM_UINT64) {
+    while ((symbol == SYM_UINT64) | (symbol == SYM_STRUCT)) {
       number_of_local_variable_bytes = compile_variable(number_of_local_variable_bytes);
 
       if (symbol == SYM_SEMICOLON)
@@ -6021,6 +6102,91 @@ void compile_procedure(char* procedure, uint64_t type) {
   // assert: allocated_temporaries == 0
 }
 
+void compile_struct(char* struct_name, uint64_t type) {
+  
+  uint64_t* entry;
+  //kann ich des irgendwie umgehen? hässlig
+  uint64_t type_variable;
+  char* field_struct_type;
+  char* field_name;
+  uint64_t* fields;
+  uint64_t struct_field_initialized;
+  fields = (uint64_t*) 0;
+  struct_field_initialized = 0;
+
+  if (symbol == SYM_LBRACE){
+    get_symbol();
+
+    while ((symbol == SYM_UINT64) | (symbol == SYM_STRUCT)){
+
+      if (symbol == SYM_STRUCT){
+        //type_variable = compile_type();
+        get_symbol();
+        
+        if (symbol == SYM_IDENTIFIER){
+          get_symbol();
+          field_struct_type = identifier;
+          if (symbol == SYM_ASTERISK){
+            get_symbol();
+            if (symbol == SYM_IDENTIFIER){
+              field_name = identifier;
+              get_symbol();
+              if (symbol == SYM_SEMICOLON){
+                get_symbol();
+
+                if (struct_field_initialized == 0){
+                  fields = allocate_struct_field_entry();
+                  set_fieldname(fields, field_name);
+                  set_field_structtype(fields, field_struct_type);
+                  struct_field_initialized = 1;
+                } else
+                  create_struct_field(fields, 0, field_struct_type, field_name);
+              }
+            }
+          }
+        }
+
+      } else {
+        type_variable = compile_type();
+
+        if (symbol == SYM_IDENTIFIER){
+          get_symbol();
+          
+          if (struct_field_initialized == 0){
+            fields = allocate_struct_field_entry();
+            set_fieldname(fields, identifier);
+            set_fieldtype(fields, type_variable);
+            struct_field_initialized = 1;
+          } else
+            create_struct_field(fields, type_variable, field_struct_type , identifier);
+          
+          if (symbol == SYM_SEMICOLON){
+            get_symbol(); 
+          }
+        }
+      }
+    }
+
+    if (symbol == SYM_RBRACE){
+      get_symbol();
+
+      if (symbol == SYM_SEMICOLON){
+        get_symbol();
+
+        entry = search_global_symbol_table(struct_name, TYPE);
+
+        if (entry == (uint64_t*) 0)
+        // procedure never called nor declared nor defined
+        create_symbol_table_entry(GLOBAL_TABLE, struct_name, line_number, TYPE, type, 0, 0);
+        if (fields != (uint64_t*) 0){
+          entry = get_variable_or_big_int(struct_name, TYPE);
+          set_elements(entry, fields);
+        }
+      }
+    }
+  }
+}
+
 void compile_cstar() {
   uint64_t type;
   char* variable_or_procedure_name;
@@ -6029,6 +6195,10 @@ void compile_cstar() {
   uint64_t* entry;
   uint64_t range_array_cstar;
   uint64_t* dimensions;
+  char* struct_type;
+  //uint64_t* struct_entry;
+
+
   range_array_cstar = 0;
 
   while (symbol != SYM_EOF) {
@@ -6062,6 +6232,55 @@ void compile_cstar() {
         compile_procedure(variable_or_procedure_name, type);
       } else
         syntax_error_symbol(SYM_IDENTIFIER);
+    } else if (symbol == SYM_STRUCT) {
+      
+      get_symbol();
+
+      if (symbol == SYM_IDENTIFIER){
+        //This will be needed for next assignment
+        struct_type = identifier;
+        get_symbol();
+        
+        if (symbol == SYM_ASTERISK){
+          get_symbol();
+          type = STRUCT_T;
+
+          if (symbol == SYM_IDENTIFIER) {
+            variable_or_procedure_name = identifier;
+            get_symbol();
+
+            //STRUCT definition
+            if (symbol == SYM_SEMICOLON) {
+              get_symbol();
+              initial_value = 0;
+                    
+              current_line_number = line_number;
+
+              //This will be needed for the smalloc of a struct variable
+              //and to change data_size
+              //struct_entry = search_global_symbol_table(struct_type, TYPE);
+
+              entry = search_global_symbol_table(variable_or_procedure_name, VARIABLE);
+
+              if (entry == (uint64_t*) 0) {
+
+                data_size = data_size + WORDSIZE;
+                      
+                create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, initial_value, -data_size);
+                entry = search_global_symbol_table(variable_or_procedure_name, VARIABLE);
+                set_structtype(entry, struct_type);
+              } else {
+              // global variable already declared or defined
+                print_line_number("warning", current_line_number);
+                printf1("redefinition of global variable %s ignored\n", variable_or_procedure_name);
+              }
+            } 
+          }
+        } else if (symbol == SYM_LBRACE){
+          //Struct declaration
+          compile_struct(identifier, TYPE);
+        }
+      }
     } else {
       type = compile_type();
 

@@ -8,7 +8,7 @@ This is the grammar of the C Star (C\*) programming language.
 
 C\* is a tiny subset of the programming language C. C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`) operators. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*`, bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with 6 keywords and 22 symbols. Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored.
 
-C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
+C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`, `struct`
 
 C\* Symbols: `integer_literal`, `character_literal`, `string_literal`, `identifier`, `hex_literal`, `,`, `;`, `(`, `)`, `[`, `]`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&`, `|`, `~`,
 
@@ -44,16 +44,21 @@ C\* Grammar:
 cstar             = { type identifier
                       [ "=" [ cast ] [ "-" ] ( integer_literal | character_literal ) ] ";" |
                       type identifier "[" integer_literal "]" { "[" integer_literal "]" } |
+                      "struct" identifier struct |
+                      "struct" identifier "*" identifier ";" |
                     ( "void" | type ) identifier procedure } .
 
 type              = "uint64_t" [ "*" ] .
 
 cast              = "(" type ")" .
 
+struct            = "{" { variable ";" } "}" ";" .
+
 procedure         = "(" [ variable { "," variable } ] ")" ( ";" |
                     "{" { variable ";" } { statement } "}" ) .
 
-variable          = type identifier [ "[" integer_literal "]" { "[" integer_literal "]" } ] .
+variable          = type identifier [ "[" integer_literal "]" { "[" integer_literal "]" } ] |
+                    "struct" identifier "*" identifier .
 
 statement         = ( [ "*" ] identifier [ "[" expression "]" { "[" expression "]" } ] | "*" "(" expression ")" ) "=" expression ";" |
                     call ";" | while | if | return ";" .
