@@ -44,11 +44,8 @@ C\* Grammar:
 cstar             = { type identifier
                       [ "=" [ cast ] [ "-" ] ( integer_literal | character_literal ) ] ";" |
                       type identifier "[" integer_literal "]" { "[" integer_literal "]" } |
-<<<<<<< HEAD
                       "struct" identifier struct |
                       "struct" identifier "*" identifier ";" |
-=======
->>>>>>> main
                     ( "void" | type ) identifier procedure } .
 
 type              = "uint64_t" [ "*" ] .
@@ -60,12 +57,8 @@ struct            = "{" { variable ";" } "}" ";" .
 procedure         = "(" [ variable { "," variable } ] ")" ( ";" |
                     "{" { variable ";" } { statement } "}" ) .
 
-<<<<<<< HEAD
 variable          = type identifier [ "[" integer_literal "]" { "[" integer_literal "]" } ] |
                     "struct" identifier "*" identifier .
-=======
-variable          = type identifier [ "[" integer_literal "]" { "[" integer_literal "]" } ] .
->>>>>>> main
 
 statement         = ( [ "*" ] identifier [ "[" expression "]" { "[" expression "]" } ] | "*" "(" expression ")" ) "=" expression ";" |
                     call ";" | while | if | return ";" .

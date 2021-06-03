@@ -554,7 +554,6 @@ uint64_t is_undefined_procedure(uint64_t* entry);
 uint64_t report_undefined_procedures();
 
 // symbol table entry:
-<<<<<<< HEAD
 // +---+-------------+
 // | 0 | next        | pointer to next entry
 // | 1 | string      | identifier string, big integer as string, string literal
@@ -570,22 +569,6 @@ uint64_t report_undefined_procedures();
 
 uint64_t* allocate_symbol_table_entry() {
   return smalloc(4 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
-=======
-// +---+---------+
-// | 0 | next    | pointer to next entry
-// | 1 | string  | identifier string, big integer as string, string literal
-// | 2 | line#   | source line number
-// | 3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE
-// | 4 | type    | UINT64_T, UINT64STAR_T, VOID_T, UINT64ARRAY_T
-// | 5 | value   | VARIABLE: initial value
-// | 6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
-// | 7 | scope   | REG_GP (global), REG_S0 (local)
-// | 8 | elements| UINT64ARRAY_T elements
-// +---+---------+
-
-uint64_t* allocate_symbol_table_entry() {
-  return smalloc(3 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
->>>>>>> main
 }
 
 uint64_t* get_next_entry(uint64_t* entry)  { return (uint64_t*) *entry; }
@@ -597,7 +580,6 @@ uint64_t  get_value(uint64_t* entry)       { return             *(entry + 5); }
 uint64_t  get_address(uint64_t* entry)     { return             *(entry + 6); }
 uint64_t  get_scope(uint64_t* entry)       { return             *(entry + 7); }
 uint64_t*  get_elements(uint64_t* entry)   { return (uint64_t*) *(entry + 8); }
-<<<<<<< HEAD
 char*     get_structtype(uint64_t* entry)  { return (char*)     *(entry + 9); }
 
 
@@ -662,39 +644,6 @@ void set_fieldname(uint64_t* entry_field, char* fieldname)         { *(entry_fie
 void set_field_structtype(uint64_t* entry_field, char* fieldname)  { *(entry_field + 3) = (uint64_t) fieldname; }
 
 
-=======
-
-void set_next_entry(uint64_t* entry, uint64_t* next)   { *entry       = (uint64_t) next; }
-void set_string(uint64_t* entry, char* identifier)     { *(entry + 1) = (uint64_t) identifier; }
-void set_line_number(uint64_t* entry, uint64_t line)   { *(entry + 2) = line; }
-void set_class(uint64_t* entry, uint64_t class)        { *(entry + 3) = class; }
-void set_type(uint64_t* entry, uint64_t type)          { *(entry + 4) = type; }
-void set_value(uint64_t* entry, uint64_t value)        { *(entry + 5) = value; }
-void set_address(uint64_t* entry, uint64_t address)    { *(entry + 6) = address; }
-void set_scope(uint64_t* entry, uint64_t scope)        { *(entry + 7) = scope; }
-void set_elements(uint64_t* entry, uint64_t* elements) { *(entry + 8) = (uint64_t) elements; }
-
-// ------------------------ ARRAY DIMENSIONS -----------------------
-
-void create_array_dimension(uint64_t* head, uint64_t dimension);
-void mul_array_dimension(uint64_t* head);
-
-// array dimension:
-// +---+----------+
-// | 0 | next     | pointer to next entry
-// | 1 | dimension| UINT64ARRAY_T dimensions
-// +---+----------+
-
-uint64_t* allocate_array_dimensions_entry() {
-  return smalloc(1 * SIZEOFUINT64STAR + 1 * SIZEOFUINT64);
-}
-
-uint64_t* get_next_dimension(uint64_t* entry_dim)  { return (uint64_t*) *entry_dim; }
-uint64_t  get_dimension(uint64_t* entry_dim)       { return             *(entry_dim + 1); }
-
-void set_next_dimension(uint64_t* entry_dim, uint64_t* next_dim)   { *entry_dim       = (uint64_t) next_dim; }
-void set_dimension(uint64_t* entry_dim, uint64_t dimension)        { *(entry_dim + 1) = dimension; }
->>>>>>> main
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -4285,7 +4234,6 @@ void mul_array_dimension(uint64_t* head){
 }
 
 // -----------------------------------------------------------------
-<<<<<<< HEAD
 // ------------------------ STRUCT FIELD ---------------------------
 // -----------------------------------------------------------------
 void create_struct_field(uint64_t* head, uint64_t field_type, char* field_structtype, char* field_name){
@@ -4307,8 +4255,6 @@ void create_struct_field(uint64_t* head, uint64_t field_type, char* field_struct
 }
 
 // -----------------------------------------------------------------
-=======
->>>>>>> main
 // ---------------------------- PARSER -----------------------------
 // -----------------------------------------------------------------
 
@@ -5871,15 +5817,10 @@ uint64_t compile_variable(uint64_t offset) {
   uint64_t type;
   uint64_t range_array;
   uint64_t* dimensions;
-<<<<<<< HEAD
   char* struct_type;
 
   dimensions = (uint64_t*) 0;
   struct_type = (char*) 0;
-=======
-
-  dimensions = (uint64_t*) 0;
->>>>>>> main
   range_array = 0;
 
   type = compile_type();
@@ -5897,19 +5838,11 @@ uint64_t compile_variable(uint64_t offset) {
           dimensions = allocate_array_dimensions_entry();
           set_dimension(dimensions, literal);
           
-<<<<<<< HEAD
           while (symbol == SYM_LBRACKET){
             get_symbol();
             if (symbol == SYM_INTEGER){
               get_symbol();
               if (symbol == SYM_RBRACKET){
-=======
-          while(symbol == SYM_LBRACKET){
-            get_symbol();
-            if(symbol == SYM_INTEGER){
-              get_symbol();
-              if(symbol == SYM_RBRACKET){
->>>>>>> main
                 get_symbol();
                 create_array_dimension(dimensions, literal);
 
@@ -5936,16 +5869,11 @@ uint64_t compile_variable(uint64_t offset) {
       offset = offset + WORDSIZE;
     // TODO: check if identifier has already been declared
     create_symbol_table_entry(LOCAL_TABLE, identifier, line_number, VARIABLE, type, 0, -offset);
-<<<<<<< HEAD
     if ((uint64_t) dimensions != 0)
       set_elements(get_variable_or_big_int(identifier, VARIABLE), dimensions);
     if ((uint64_t) struct_type != 0)
       set_structtype(get_variable_or_big_int(identifier, VARIABLE), struct_type);
 
-=======
-    if((uint64_t) dimensions != 0)
-      set_elements(get_variable_or_big_int(identifier, VARIABLE), dimensions);
->>>>>>> main
 
   } else {
     syntax_error_symbol(SYM_IDENTIFIER);
@@ -6267,13 +6195,10 @@ void compile_cstar() {
   uint64_t* entry;
   uint64_t range_array_cstar;
   uint64_t* dimensions;
-<<<<<<< HEAD
   char* struct_type;
   //uint64_t* struct_entry;
 
 
-=======
->>>>>>> main
   range_array_cstar = 0;
 
   while (symbol != SYM_EOF) {
