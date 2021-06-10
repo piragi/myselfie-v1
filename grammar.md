@@ -60,7 +60,9 @@ procedure         = "(" [ variable { "," variable } ] ")" ( ";" |
 variable          = type identifier [ "[" integer_literal "]" { "[" integer_literal "]" } ] |
                     "struct" identifier "*" identifier .
 
-statement         = ( [ "*" ] identifier [ "[" expression "]" { "[" expression "]" } ] | "*" "(" expression ")" ) "=" expression ";" |
+statement         = ( [ "*" ] identifier [ "[" expression "]" { "[" expression "]" } ] |
+                    identifier [ "->" identifier { "->" identifier } ] | 
+                    "*" "(" expression ")" ) "=" expression ";" |
                     call ";" | while | if | return ";" .
 
 call              = identifier "(" [ expression { "," expression } ] ")" .
@@ -80,7 +82,8 @@ term              = factor { ( "*" | "/" | "%" ) factor } .
 
 factor            = [ "~" ] [ cast ] [ "-" ] [ "*" ]
                     ( integer_literal | character_literal | string_literal |
-                      identifier [ "[" expression "]" { "[" expression "]" } ] | call | "(" expression ")" ) .
+                      identifier [ "[" expression "]" { "[" expression "]" } ] |
+                      identifier [ "->" identifier { "->" identifier } ] | call | "(" expression ")" ) .
 
 while             = "while" "(" expression ")"
                       ( statement | "{" { statement } "}" ) .
