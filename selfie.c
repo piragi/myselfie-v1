@@ -133,7 +133,7 @@ char*    store_character(char* s, uint64_t i, uint64_t c);
 
 char*    string_alloc(uint64_t l);
 uint64_t string_length(char* s);
-char*    string_copy(char* s);
+char*    string_shrink(char* s);
 void     string_reverse(char* s);
 uint64_t string_compare(char* s, char* t);
 
@@ -470,6 +470,8 @@ uint64_t number_of_ignored_characters = 0;
 uint64_t number_of_comments           = 0;
 uint64_t number_of_scanned_symbols    = 0;
 
+uint64_t number_of_syntax_errors = 0; // the number of encountered syntax errors
+
 char*    source_name = (char*) 0; // name of source file
 uint64_t source_fd   = 0; // file descriptor of open source file
 
@@ -534,6 +536,8 @@ void reset_scanner() {
   number_of_ignored_characters = 0;
   number_of_comments           = 0;
   number_of_scanned_symbols    = 0;
+
+  number_of_syntax_errors = 0;
 }
 
 // -----------------------------------------------------------------
@@ -788,6 +792,8 @@ void reset_parser() {
   number_of_if          = 0;
   number_of_return      = 0;
 
+  number_of_syntax_errors = 0;
+
   get_symbol();
 }
 
@@ -795,13 +801,29 @@ void reset_parser() {
 // ---------------------- MACHINE CODE LIBRARY ---------------------
 // -----------------------------------------------------------------
 
+void init_bootstrapping();
+
 void emit_round_up(uint64_t reg, uint64_t m);
 void emit_multiply_by(uint64_t reg, uint64_t m);
-void emit_program_entry();
 
 // bootstrapping binary
 
+void emit_program_entry();
 void emit_bootstrapping();
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+char* main_name = (char*) 0;
+char* bump_name = (char*) 0;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void init_bootstrapping() {
+  // caution: length of string literals must be multiples of WORDSIZE
+  // to avoid out-of-bound array access warnings, use space to fill
+  main_name = string_shrink("main   ");
+  bump_name = string_shrink("_bump  ");
+}
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -2375,16 +2397,17 @@ uint64_t EXITCODE_IOERROR                = 15;
 uint64_t EXITCODE_SCANNERERROR           = 16;
 uint64_t EXITCODE_PARSERERROR            = 17;
 uint64_t EXITCODE_COMPILERERROR          = 18;
-uint64_t EXITCODE_OUTOFVIRTUALMEMORY     = 19;
-uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 20;
-uint64_t EXITCODE_DIVISIONBYZERO         = 21;
-uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 22;
-uint64_t EXITCODE_UNKNOWNSYSCALL         = 23;
-uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 24;
-uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 25;
-uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 26; // for symbolic execution
-uint64_t EXITCODE_MODELINGERROR          = 27; // for model generation
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 28;
+uint64_t EXITCODE_SYNTAXERROR            = 19;
+uint64_t EXITCODE_OUTOFVIRTUALMEMORY     = 20;
+uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 21;
+uint64_t EXITCODE_DIVISIONBYZERO         = 22;
+uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 23;
+uint64_t EXITCODE_UNKNOWNSYSCALL         = 24;
+uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 25;
+uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 26;
+uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 27; // for symbolic execution
+uint64_t EXITCODE_MODELINGERROR          = 28; // for model generation
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 29;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -2709,12 +2732,21 @@ uint64_t string_length(char* s) {
   return i;
 }
 
-char* string_copy(char* s) {
+char* string_shrink(char* s) {
   uint64_t l;
-  char* t;
   uint64_t i;
+  char* t;
 
   l = string_length(s);
+
+  i = 0;
+
+  while (i < l)
+    if (load_character(s, i) == ' ')
+      // discard any characters to the right of a space
+      l = i;
+    else
+      i = i + 1;
 
   t = string_alloc(l);
 
@@ -3435,6 +3467,8 @@ void print_line_number(char* message, uint64_t line) {
 void syntax_error_message(char* message) {
   print_line_number("syntax error", line_number);
   printf1("%s\n", message);
+
+  number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
 void syntax_error_character(uint64_t expected) {
@@ -3443,6 +3477,8 @@ void syntax_error_character(uint64_t expected) {
   print(" expected but ");
   print_character(character);
   print(" found\n");
+
+  number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
 void syntax_error_identifier(char* expected) {
@@ -3451,6 +3487,8 @@ void syntax_error_identifier(char* expected) {
   print(" expected but ");
   print_string(identifier);
   print(" found\n");
+
+  number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
 void get_character() {
@@ -4032,6 +4070,8 @@ void get_symbol() {
         print_character(character);
         println();
 
+        number_of_syntax_errors = number_of_syntax_errors + 1;
+
         exit(EXITCODE_SCANNERERROR);
       }
     }
@@ -4194,6 +4234,8 @@ uint64_t report_undefined_procedures() {
 
         print_line_number("syntax error", get_line_number(entry));
         printf1("procedure %s undefined\n", get_string(entry));
+
+        number_of_syntax_errors = number_of_syntax_errors + 1;
       }
 
       // keep looking
@@ -4499,6 +4541,8 @@ void syntax_error_symbol(uint64_t expected) {
   print(" expected but ");
   print_symbol(symbol);
   print(" found\n");
+
+  number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
 void syntax_error_unexpected() {
@@ -4506,6 +4550,8 @@ void syntax_error_unexpected() {
   print("unexpected symbol ");
   print_symbol(symbol);
   print(" found\n");
+
+  number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
 void print_type(uint64_t type) {
@@ -4576,6 +4622,8 @@ uint64_t* get_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
     if (entry == (uint64_t*) 0) {
       print_line_number("syntax error", line_number);
       printf1("%s undeclared\n", variable_or_big_int);
+
+      number_of_syntax_errors = number_of_syntax_errors + 1;
 
       exit(EXITCODE_PARSERERROR);
     }
@@ -6042,7 +6090,7 @@ void compile_procedure(char* procedure, uint64_t type) {
         set_type(entry, type);
         set_address(entry, code_size);
 
-        if (string_compare(procedure, "main")) {
+        if (string_compare(procedure, main_name)) {
           // first source containing main procedure provides binary name
           binary_name = source_name;
 
@@ -6489,8 +6537,8 @@ void emit_bootstrapping() {
     emit_ecall();
 
     // look up global variable _bump for storing malloc's bump pointer
-    // copy "_bump" string into zeroed word to obtain unique hash
-    entry = search_global_symbol_table(string_copy("_bump"), VARIABLE);
+    // use bump_name string to obtain unique hash
+    entry = search_global_symbol_table(bump_name, VARIABLE);
 
     // store word-aligned program break in _bump
     emit_store(get_scope(entry), get_address(entry), REG_A0);
@@ -6527,10 +6575,10 @@ void emit_bootstrapping() {
     // assert: global, _bump, and stack pointers are set up
     //         with all other non-temporary registers zeroed
 
-    // copy "main" string into zeroed word to obtain unique hash
-    entry = get_scoped_symbol_table_entry(string_copy("main"), PROCEDURE);
+    // use main_name string to obtain unique hash
+    entry = get_scoped_symbol_table_entry(main_name, PROCEDURE);
 
-    procedure_call(entry, "main");
+    procedure_call(entry, main_name);
   }
 
   // we exit with exit code in return register pushed onto the stack
@@ -6609,8 +6657,8 @@ void selfie_compile() {
   }
 
   // implicitly declare main procedure in global symbol table
-  // copy "main" string into zeroed word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("main"), 0, PROCEDURE, UINT64_T, 0, 0);
+  // use main_name string to obtain unique hash
+  create_symbol_table_entry(GLOBAL_TABLE, main_name, 0, PROCEDURE, UINT64_T, 0, 0);
 
   while (link) {
     if (number_of_remaining_arguments() == 0)
@@ -6660,6 +6708,14 @@ void selfie_compile() {
         (char*) number_of_while,
         (char*) number_of_if,
         (char*) number_of_return);
+
+      if (number_of_syntax_errors != 0) {
+        printf3("%s: encountered %u syntax errors while compiling %s - omitting ELF output\n",
+                (char*) selfie_name,
+                (char*) number_of_syntax_errors,
+                (char*) source_name);
+        exit(EXITCODE_SYNTAXERROR);
+      }
     }
   }
 
@@ -8188,13 +8244,13 @@ void emit_malloc() {
   data_size = data_size + WORDSIZE;
 
   // define global variable _bump for storing malloc's bump pointer
-  // copy "_bump" string into zeroed word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("_bump"), 1, VARIABLE, UINT64_T, 0, -data_size);
+  // use bump_name string to obtain unique hash
+  create_symbol_table_entry(GLOBAL_TABLE, bump_name, 1, VARIABLE, UINT64_T, 0, -data_size);
 
   // do not account for _bump as global variable
   number_of_global_variables = number_of_global_variables - 1;
 
-  entry = search_global_symbol_table(string_copy("_bump"), VARIABLE);
+  entry = search_global_symbol_table(bump_name, VARIABLE);
 
   // allocate register for size parameter
   talloc();
@@ -12319,6 +12375,8 @@ uint64_t selfie(uint64_t extras) {
     println();
 
     init_scanner();
+    init_bootstrapping();
+
     init_register();
     init_disassembler();
     init_interpreter();
