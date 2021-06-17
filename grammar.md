@@ -65,6 +65,11 @@ statement         = ( [ "*" ] identifier [ "[" expression "]" { "[" expression "
                     "*" "(" expression ")" ) "=" expression ";" |
                     call ";" | while | if | return ";" .
 
+statement_var     = ( [ "*" ] identifier [ "[" expression "]" { "[" expression "]" } ] |
+                    identifier [ "->" identifier { "->" identifier } ] | 
+                    "*" "(" expression ")" ) "=" expression |
+                    call . 
+
 call              = identifier "(" [ expression { "," expression } ] ")" .
 
 expression        = and_expression { "|" and_expression } .
@@ -86,6 +91,9 @@ factor            = [ "~" ] [ cast ] [ "-" ] [ "*" ]
                       identifier [ "->" identifier { "->" identifier } ] | call | "(" expression ")" ) .
 
 while             = "while" "(" expression ")"
+                      ( statement | "{" { statement } "}" ) .
+
+for               = "for" "(" statement_var ";" expression ";" statement_var ")"
                       ( statement | "{" { statement } "}" ) .
 
 if                = "if" "(" expression ")"

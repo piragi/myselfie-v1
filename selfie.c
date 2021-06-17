@@ -433,14 +433,15 @@ uint64_t SYM_LBRACKET     = 33; // [
 uint64_t SYM_RBRACKET     = 34; // ]
 uint64_t SYM_STRUCT       = 35; // struct
 uint64_t SYM_ARROW        = 36; // ->
+uint64_t SYM_FOR          = 37; // for
 
 
 // symbols for bootstrapping
 
-uint64_t SYM_INT      = 36; // int
-uint64_t SYM_CHAR     = 37; // char
-uint64_t SYM_UNSIGNED = 38; // unsigned
-uint64_t SYM_ELLIPSIS = 39; // ...
+uint64_t SYM_INT      = 38; // int
+uint64_t SYM_CHAR     = 39; // char
+uint64_t SYM_UNSIGNED = 40; // unsigned
+uint64_t SYM_ELLIPSIS = 41; // ...
 
 
 uint64_t* SYMBOLS; // strings representing symbols
@@ -517,7 +518,8 @@ void init_scanner () {
   *(SYMBOLS + SYM_LBRACKET)     = (uint64_t) "[";
   *(SYMBOLS + SYM_RBRACKET)     = (uint64_t) "]";
   *(SYMBOLS + SYM_STRUCT)       = (uint64_t) "struct";
-  *(SYMBOLS + SYM_ARROW)        = (uint64_t) "arrow";
+  *(SYMBOLS + SYM_ARROW)        = (uint64_t) "arrow"; //->
+  *(SYMBOLS + SYM_FOR)          = (uint64_t) "for"; 
 
   *(SYMBOLS + SYM_INT)      = (uint64_t) "int";
   *(SYMBOLS + SYM_CHAR)     = (uint64_t) "char";
@@ -763,9 +765,10 @@ uint64_t compile_and_expression();
 uint64_t compile_compare_expression();
 uint64_t compile_expression();
 void     compile_while();
+void     compile_for();
 void     compile_if();
 void     compile_return();
-void     compile_statement();
+void     compile_statement(uint64_t flag);
 uint64_t compile_type();
 uint64_t compile_variable(uint64_t offset);
 uint64_t compile_initialization(uint64_t type);
@@ -786,6 +789,7 @@ uint64_t number_of_assignments = 0;
 uint64_t number_of_while       = 0;
 uint64_t number_of_if          = 0;
 uint64_t number_of_return      = 0;
+uint64_t number_of_for         = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -795,6 +799,7 @@ void reset_parser() {
   number_of_while       = 0;
   number_of_if          = 0;
   number_of_return      = 0;
+  number_of_for         = 0;
 
   number_of_syntax_errors = 0;
 
@@ -3736,6 +3741,8 @@ uint64_t identifier_or_keyword() {
     return SYM_UINT64;
   else if (identifier_string_match(SYM_STRUCT))
     return SYM_STRUCT;
+  else if (identifier_string_match(SYM_FOR))
+    return SYM_FOR;
   else
     return SYM_IDENTIFIER;
 }
@@ -4494,6 +4501,8 @@ uint64_t look_for_statement() {
   else if (symbol == SYM_RETURN)
     return 0;
   else if (symbol == SYM_EOF)
+    return 0;
+  else if (symbol == SYM_FOR)
     return 0;
   else
     return 1;
@@ -5522,7 +5531,7 @@ void compile_while() {
           get_symbol();
 
           while (is_not_rbrace_or_eof())
-            compile_statement();
+            compile_statement(0);
 
           if (symbol == SYM_RBRACE)
             get_symbol();
@@ -5533,7 +5542,7 @@ void compile_while() {
           }
         } else
           // only one statement without {}
-          compile_statement();
+          compile_statement(0);
       } else
         syntax_error_symbol(SYM_RPARENTHESIS);
     } else
@@ -5554,6 +5563,96 @@ void compile_while() {
   // assert: allocated_temporaries == 0
 
   number_of_while = number_of_while + 1;
+}
+
+void compile_for() {
+  uint64_t jump_back_to_for;
+  uint64_t jump_back_to_for_condition;
+  uint64_t jump_to_for_body;
+  uint64_t branch_forward_to_end;
+  
+  jump_to_for_body = 0;
+  jump_back_to_for = 0;
+  branch_forward_to_end = 0;
+  jump_back_to_for_condition = 0;
+
+  // for ( statement, expression, statement )
+  if (symbol == SYM_FOR) {
+    get_symbol();
+
+    if (symbol == SYM_LPARENTHESIS) {
+      get_symbol();
+
+      compile_statement(0);
+
+      jump_back_to_for_condition = code_size;
+
+      compile_expression();
+      if (symbol == SYM_SEMICOLON)
+        get_symbol();
+      
+      // we do not know where to branch, fixup later
+      branch_forward_to_end = code_size;
+
+      emit_beq(current_temporary(), REG_ZR, 0);
+
+      tfree(1);
+
+      jump_to_for_body = code_size;
+      emit_jal(REG_ZR, 0);
+
+
+      jump_back_to_for = code_size;
+      compile_statement(1);
+      
+      emit_jal(REG_ZR, jump_back_to_for_condition - code_size);
+      
+      if (jump_to_for_body != 0)
+        fixup_relative_JFormat(jump_to_for_body, code_size);
+      
+      if (symbol == SYM_RPARENTHESIS) {
+        get_symbol();
+
+        // zero or more statements: { statement }
+        if (symbol == SYM_LBRACE) {
+          get_symbol();
+
+          while (is_not_rbrace_or_eof())
+            compile_statement(0);
+
+          if (symbol == SYM_RBRACE)
+            get_symbol();
+          else {
+            syntax_error_symbol(SYM_RBRACE);
+
+            exit(EXITCODE_PARSERERROR);
+          }
+        } else
+          // only one statement without {}
+          compile_statement(0);
+
+        emit_jal(REG_ZR, jump_back_to_for - code_size);
+      } else
+        syntax_error_symbol(SYM_RPARENTHESIS);
+    } else
+      syntax_error_symbol(SYM_LPARENTHESIS);
+  } else
+    syntax_error_symbol(SYM_FOR);
+
+  // we use JAL for the unconditional jump back to the loop condition because:
+  // 1. the RISC-V doc recommends to do so to not disturb branch prediction
+  // 2. GCC also uses JAL for the unconditional back jump of a while loop
+  
+  emit_jal(REG_ZR, jump_back_to_for_condition - code_size);
+
+  if (branch_forward_to_end != 0)
+    // first instruction after loop body will be generated here
+    // now we have the address for the conditional branch from above
+    fixup_relative_BFormat(branch_forward_to_end);
+
+  // assert: allocated_temporaries == 0
+
+  number_of_for = number_of_for + 1;
 }
 
 void compile_if() {
@@ -5586,7 +5685,7 @@ void compile_if() {
           get_symbol();
 
           while (is_not_rbrace_or_eof())
-            compile_statement();
+            compile_statement(0);
 
           if (symbol == SYM_RBRACE)
             get_symbol();
@@ -5597,7 +5696,7 @@ void compile_if() {
           }
         } else
         // only one statement without {}
-          compile_statement();
+          compile_statement(0);
 
         //optional: else
         if (symbol == SYM_ELSE) {
@@ -5617,7 +5716,7 @@ void compile_if() {
             get_symbol();
 
             while (is_not_rbrace_or_eof())
-              compile_statement();
+              compile_statement(0);
 
             if (symbol == SYM_RBRACE)
               get_symbol();
@@ -5629,7 +5728,7 @@ void compile_if() {
 
           // only one statement without {}
           } else
-            compile_statement();
+            compile_statement(0);
 
           // if the "if" case was true we unconditionally jump here
           fixup_relative_JFormat(jump_forward_to_end, code_size);
@@ -5683,7 +5782,7 @@ void compile_return() {
   number_of_return = number_of_return + 1;
 }
 
-void compile_statement() {
+void compile_statement(uint64_t flag) {
   uint64_t ltype;
   uint64_t rtype;
   char* variable_or_procedure_name;
@@ -5872,10 +5971,13 @@ void compile_statement() {
           tfree(1);
           number_of_assignments = number_of_assignments + 1;
 
+          
           if (symbol == SYM_SEMICOLON)
             get_symbol();
           else
             syntax_error_symbol(SYM_SEMICOLON);
+          
+          
         }
       }
     } else if (symbol == SYM_ARROW) {
@@ -5954,17 +6056,23 @@ void compile_statement() {
       }
 
       number_of_assignments = number_of_assignments + 1;
-
-      if (symbol == SYM_SEMICOLON)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_SEMICOLON);
+      
+      if (flag == 0) {
+        if (symbol == SYM_SEMICOLON)
+          get_symbol();
+        else
+          syntax_error_symbol(SYM_SEMICOLON);
+      }
     } else
       syntax_error_unexpected();
   }
   // while statement?
   else if (symbol == SYM_WHILE) {
     compile_while();
+  }
+  //for statement?
+  else if (symbol == SYM_FOR) {
+    compile_for();
   }
   // if statement?
   else if (symbol == SYM_IF) {
@@ -6270,7 +6378,7 @@ void compile_procedure(char* procedure, uint64_t type) {
     return_type = type;
 
     while (is_not_rbrace_or_eof())
-      compile_statement();
+      compile_statement(0);
 
     return_type = 0;
 
@@ -6848,10 +6956,11 @@ void selfie_compile() {
         (char*) number_of_procedures,
         (char*) number_of_strings);
 
-      printf6("%s: %u calls, %u assignments, %u while, %u if, %u return\n", selfie_name,
+      printf7("%s: %u calls, %u assignments, %u while, %u for, %u if, %u return\n", selfie_name,
         (char*) number_of_calls,
         (char*) number_of_assignments,
         (char*) number_of_while,
+        (char*) number_of_for,
         (char*) number_of_if,
         (char*) number_of_return);
 
