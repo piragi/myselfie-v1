@@ -6017,55 +6017,6 @@ void compile_statement(uint64_t flag) {
         }
         tfree(1);
       }
-    } else if (symbol == SYM_ARROW) {
-      get_symbol();
-
-      if (symbol == SYM_IDENTIFIER) {
-
-        fields = get_elements(get_variable_or_big_int(get_structtype(get_variable_or_big_int(variable_or_procedure_name, VARIABLE)), TYPE));
-        load_variable_or_big_int(variable_or_procedure_name, VARIABLE);
-        print_integer(pos_struct_field(fields, identifier));
-
-        
-        emit_add(previous_temporary(), current_temporary(), previous_temporary());
-        tfree(1);
-        get_symbol();
-
-        while (symbol == SYM_ARROW) {
-          //type weitergeben
-          fieldtype_before = search_struct_field(fields, identifier);
-          variable_or_procedure_name = identifier;
-          get_symbol();
-
-          if (symbol == SYM_IDENTIFIER) {
-            fields = get_elements(get_variable_or_big_int(fieldtype_before, TYPE));
-            emit_load(current_temporary(), current_temporary(), 0);
-
-            pos_struct_field(fields, identifier);
-            emit_add(previous_temporary(), previous_temporary(), current_temporary());
-            tfree(1);
-            get_symbol();
-
-          } 
-        }
-
-        if (symbol == SYM_ASSIGN) {
-
-          get_symbol();
-
-          rtype = compile_expression();
-          emit_store(previous_temporary(), 0, current_temporary());
-
-          tfree(1);
-          number_of_assignments = number_of_assignments + 1;
-
-          if (symbol == SYM_SEMICOLON)
-            get_symbol();
-          else
-            syntax_error_symbol(SYM_SEMICOLON);
-        }
-        tfree(1);
-      }
     } else if (symbol == SYM_ASSIGN) {
       entry = get_variable_or_big_int(variable_or_procedure_name, VARIABLE);
 
