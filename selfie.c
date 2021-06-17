@@ -6104,25 +6104,27 @@ void compile_statement(uint64_t flag) {
       syntax_error_unexpected();
   }
   // while statement?
-  else if (symbol == SYM_WHILE) {
+  else if ((symbol == SYM_WHILE) & (flag == 0)) {
     compile_while();
   }
   //for statement?
-  else if (symbol == SYM_FOR) {
+  else if ((symbol == SYM_FOR) & (flag == 0)) {
     compile_for();
   }
   // if statement?
-  else if (symbol == SYM_IF) {
+  else if ((symbol == SYM_IF) & (flag == 0)) {
     compile_if();
   }
   // return statement?
   else if (symbol == SYM_RETURN) {
     compile_return();
 
-    if (symbol == SYM_SEMICOLON)
-      get_symbol();
-    else
-      syntax_error_symbol(SYM_SEMICOLON);
+    if (flag == 0 ) {
+      if (symbol == SYM_SEMICOLON)
+        get_symbol();
+      else
+        syntax_error_symbol(SYM_SEMICOLON);
+    }
   }
 }
 

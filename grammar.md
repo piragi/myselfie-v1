@@ -68,7 +68,7 @@ statement         = ( [ "*" ] identifier [ "[" expression "]" { "[" expression "
 statement_var     = ( [ "*" ] identifier [ "[" expression "]" { "[" expression "]" } ] |
                     identifier [ "->" identifier { "->" identifier } ] | 
                     "*" "(" expression ")" ) "=" expression |
-                    call . 
+                    call | return . 
 
 call              = identifier "(" [ expression { "," expression } ] ")" .
 
