@@ -8,7 +8,7 @@ This is the grammar of the C Star (C\*) programming language.
 
 C\* is a tiny subset of the programming language C. C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`) operators. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*`, bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with 6 keywords and 22 symbols. Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored.
 
-C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`, `struct`
+C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`, `struct`, `for`
 
 C\* Symbols: `integer_literal`, `character_literal`, `string_literal`, `identifier`, `hex_literal`, `,`, `;`, `(`, `)`, `[`, `]`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&`, `|`, `~`,
 
